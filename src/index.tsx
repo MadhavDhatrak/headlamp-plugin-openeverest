@@ -14,19 +14,42 @@
  * limitations under the License.
  */
 
-import { registerAppBarAction } from '@kinvolk/headlamp-plugin/lib';
+import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { ExtensionDetailPage } from './pages/ExtensionDetailPage';
+import { ProvidersPage } from './pages/ProvidersPage';
 
-// Below are some imports you may want to use.
-//   See README.md for links to plugin development documentation.
-// import { Headlamp, K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
-// import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-// import { K8s } from '@kinvolk/headlamp-plugin/lib/K8s';
-// import { Typography } from '@mui/material';
+// Register OpenEverest main sidebar entry
+registerSidebarEntry({
+  parent: null,
+  name: 'openeverest',
+  label: 'OpenEverest',
+  icon: 'mdi:database-cog-outline',
+  url: '/openeverest/providers',
+});
 
-registerAppBarAction(<span>Hello</span>);
+// Register Extensions submenu
+registerSidebarEntry({
+  parent: 'openeverest',
+  name: 'openeverest-providers',
+  label: 'Extensions',
+  icon: 'mdi:view-grid-outline',
+  url: '/openeverest/providers',
+});
 
-// Example of using i18n (internationalization):
-// function MyComponent() {
-//   const { t } = useTranslation();
-//   return <div>{t('translation_key')}</div>;
-// }
+// Register Catalog Page route
+registerRoute({
+  path: '/openeverest/providers',
+  sidebar: 'openeverest-providers',
+  component: () => <ProvidersPage />,
+  exact: true,
+  name: 'openeverest-providers',
+});
+
+// Register Extension Detail Page route
+registerRoute({
+  path: '/openeverest/providers/:name',
+  sidebar: 'openeverest-providers',
+  component: () => <ExtensionDetailPage />,
+  exact: true,
+  name: 'openeverest-provider-detail',
+});
