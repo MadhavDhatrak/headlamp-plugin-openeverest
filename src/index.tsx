@@ -15,17 +15,11 @@
  */
 
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { DatabaseListPage } from './pages/DatabaseListPage';
 import { ExtensionDetailPage } from './pages/ExtensionDetailPage';
 import { ProvidersPage } from './pages/ProvidersPage';
 
-// Register OpenEverest main sidebar entry
-registerSidebarEntry({
-  parent: null,
-  name: 'openeverest',
-  label: 'OpenEverest',
-  icon: 'mdi:database-cog-outline',
-  url: '/openeverest/providers',
-});
+
 
 // Register Extensions submenu
 registerSidebarEntry({
@@ -52,4 +46,31 @@ registerRoute({
   component: () => <ExtensionDetailPage />,
   exact: true,
   name: 'openeverest-provider-detail',
+});
+
+// Register OpenEverest main sidebar entry
+registerSidebarEntry({
+  parent: null,
+  name: 'openeverest',
+  label: 'OpenEverest',
+  icon: 'mdi:database-cog-outline',
+  url: '/openeverest/databases',
+});
+
+// Register Databases submenu
+registerSidebarEntry({
+  parent: 'openeverest',
+  name: 'openeverest-databases',
+  label: 'Databases',
+  icon: 'mdi:database-outline',
+  url: '/openeverest/databases',
+});
+
+// Register Databases Page route
+registerRoute({
+  path: '/openeverest/databases',
+  sidebar: 'openeverest-databases',
+  component: () => <DatabaseListPage />,
+  exact: true,
+  name: 'openeverest-databases',
 });
