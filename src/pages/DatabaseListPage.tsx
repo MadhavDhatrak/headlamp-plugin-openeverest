@@ -27,6 +27,7 @@ import { DatabaseStatusChip } from '../components/DatabaseStatusChip';
 import { DeleteDatabaseDialog } from '../components/DeleteDatabaseDialog';
 import { Instance } from '../crd/Instance';
 import { useInstances } from '../hooks/useInstances';
+import { routes } from '../utils/navigation';
 
 function formatAge(timestamp?: string): string {
   if (!timestamp) return '-';
@@ -82,7 +83,7 @@ export function DatabaseListPage() {
           variant="contained"
           color="primary"
           startIcon={<Icon icon="mdi:plus" width={20} height={20} />}
-          onClick={() => history.push('/openeverest/databases/create')}
+          onClick={() => history.push(routes.createDatabase())}
           sx={{ fontWeight: 600, textTransform: 'none', px: 2.5 }}
         >
           Create Database
@@ -183,7 +184,7 @@ export function DatabaseListPage() {
               <Button
                 variant="outlined"
                 startIcon={<Icon icon="mdi:plus" width={18} height={18} />}
-                onClick={() => history.push('/openeverest/databases/create')}
+                onClick={() => history.push(routes.createDatabase())}
                 sx={{ textTransform: 'none' }}
               >
                 Create Database
