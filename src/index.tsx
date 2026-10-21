@@ -15,6 +15,7 @@
  */
 
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { CreateDatabasePage } from './pages/CreateDatabasePage';
 import { DatabaseListPage } from './pages/DatabaseListPage';
 import { ExtensionDetailPage } from './pages/ExtensionDetailPage';
 import { ProvidersPage } from './pages/ProvidersPage';
@@ -73,4 +74,12 @@ registerRoute({
   component: () => <DatabaseListPage />,
   exact: true,
   name: 'openeverest-databases',
+});
+
+registerRoute({
+  path: '/openeverest/databases/create',
+  sidebar: 'openeverest-databases',
+  component: () => <CreateDatabasePage />,
+  exact: true,
+  name: 'openeverest-create-database',
 });

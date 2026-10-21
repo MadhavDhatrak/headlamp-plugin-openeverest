@@ -34,7 +34,7 @@ export const TextWidget: React.FC<TextWidgetProps> = ({
     <TextField
       fullWidth
       type="text"
-      label={node.label || fieldPath}
+      label={fieldParams.label || node.label || fieldPath}
       value={value === undefined || value === null ? '' : value}
       onChange={handleChange}
       required={isRequired}

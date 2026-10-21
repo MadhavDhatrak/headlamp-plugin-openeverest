@@ -12,7 +12,10 @@ export const GroupWidget: React.FC<GroupWidgetProps> = ({
   renderWidget,
 }) => {
   const components = node.components || {};
-  const order = node.componentsOrder || [];
+  const order =
+    node.componentsOrder && node.componentsOrder.length > 0
+      ? node.componentsOrder
+      : Object.keys(components);
   const description = typeof node.description === 'string' ? node.description : undefined;
 
   return (
@@ -25,9 +28,9 @@ export const GroupWidget: React.FC<GroupWidgetProps> = ({
         backgroundColor: 'background.paper',
       }}
     >
-      {node.label && (
+      {(node.fieldParams?.label || node.label) && (
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          {node.label}
+          {node.fieldParams?.label || node.label}
         </Typography>
       )}
       {description && (

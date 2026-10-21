@@ -48,7 +48,7 @@ export const ToggleWidget: React.FC<ToggleWidgetProps> = ({
             color="primary"
           />
         }
-        label={node.label || fieldPath}
+        label={fieldParams.label || node.label || fieldPath}
       />
       {(error || description) && (
         <FormHelperText>{error || description}</FormHelperText>

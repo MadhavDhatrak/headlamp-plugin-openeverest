@@ -43,7 +43,7 @@ export const NumberWidget: React.FC<NumberWidgetProps> = ({
     <TextField
       fullWidth
       type="number"
-      label={node.label || fieldPath}
+      label={fieldParams.label || node.label || fieldPath}
       value={value === undefined || value === null ? '' : value}
       onChange={handleChange}
       required={isRequired}
