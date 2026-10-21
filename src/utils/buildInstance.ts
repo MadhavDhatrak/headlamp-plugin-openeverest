@@ -127,7 +127,7 @@ export function buildInstancePayload(params: BuildInstanceParams): KubeInstanceP
       providerRef: {
         name: providerName,
       },
-      deletionPolicy: 'Delete',
+      deletionPolicy: 'Cascade',
       topology: {
         type: topologyName,
       },

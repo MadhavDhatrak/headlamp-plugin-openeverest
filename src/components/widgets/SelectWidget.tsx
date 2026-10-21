@@ -51,10 +51,10 @@ export const SelectWidget: React.FC<SelectWidgetProps> = ({
       disabled={isDisabled}
       error={!!error}
     >
-      <InputLabel id={labelId}>{node.label || fieldPath}</InputLabel>
+      <InputLabel id={labelId}>{fieldParams.label || node.label || fieldPath}</InputLabel>
       <Select
         labelId={labelId}
-        label={node.label || fieldPath}
+        label={fieldParams.label || node.label || fieldPath}
         value={value === undefined || value === null ? '' : value}
         onChange={handleChange}
       >
