@@ -6,4 +6,5 @@ export const routes = {
   providers: () => Router.createRouteURL('openeverest-providers'),
   providerDetail: (name: string) =>
     Router.createRouteURL('openeverest-provider-detail', { name }),
+  backups: () => Router.createRouteURL('openeverest-backups'),
 };
