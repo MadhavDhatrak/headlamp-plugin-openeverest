@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import { BackupStatusChip } from '../components/BackupStatusChip';
+import { CreateBackupStorageDialog } from '../components/CreateBackupStorageDialog';
 import { DeleteBackupDialog } from '../components/DeleteBackupDialog';
 import { Backup } from '../crd/Backup';
 import { useBackups } from '../hooks/useBackups';
@@ -47,6 +48,7 @@ export function BackupsPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Backup | null>(null);
+  const [isCreateStorageOpen, setIsCreateStorageOpen] = useState(false);
 
   const filteredBackups = useMemo(() => {
     if (!search.trim()) return backups;
@@ -199,6 +201,17 @@ export function BackupsPage() {
             }}
             sx={{ width: 360 }}
           />
+
+          {activeTab === 1 && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Icon icon="mdi:cloud-plus-outline" />}
+              onClick={() => setIsCreateStorageOpen(true)}
+            >
+              Add Backup Storage
+            </Button>
+          )}
         </Box>
 
         {activeTab === 0 && (
@@ -328,6 +341,11 @@ export function BackupsPage() {
           </TableContainer>
         )}
       </Box>
+
+      <CreateBackupStorageDialog
+        open={isCreateStorageOpen}
+        onClose={() => setIsCreateStorageOpen(false)}
+      />
 
       <DeleteBackupDialog
         open={Boolean(deleteTarget)}
