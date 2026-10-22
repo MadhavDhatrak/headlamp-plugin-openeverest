@@ -15,6 +15,7 @@
  */
 
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { BackupsPage } from './pages/BackupsPage';
 import { CreateDatabasePage } from './pages/CreateDatabasePage';
 import { DatabaseListPage } from './pages/DatabaseListPage';
 import { ExtensionDetailPage } from './pages/ExtensionDetailPage';
@@ -82,4 +83,20 @@ registerRoute({
   component: () => <CreateDatabasePage />,
   exact: true,
   name: 'openeverest-create-database',
+});
+
+registerSidebarEntry({
+  parent: 'openeverest',
+  name: 'openeverest-backups',
+  label: 'Backups',
+  icon: 'mdi:database-arrow-up',
+  url: '/openeverest/backups',
+});
+
+registerRoute({
+  path: '/openeverest/backups',
+  sidebar: 'openeverest-backups',
+  component: () => <BackupsPage />,
+  exact: true,
+  name: 'openeverest-backups',
 });
