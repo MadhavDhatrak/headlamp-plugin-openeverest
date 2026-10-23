@@ -27,7 +27,9 @@ import React, { useMemo, useState } from 'react';
 import { BackupStatusChip } from '../components/BackupStatusChip';
 import { CreateBackupStorageDialog } from '../components/CreateBackupStorageDialog';
 import { DeleteBackupDialog } from '../components/DeleteBackupDialog';
+import { DeleteBackupStorageDialog } from '../components/DeleteBackupStorageDialog';
 import { Backup } from '../crd/Backup';
+import { BackupStorage } from '../crd/BackupStorage';
 import { useBackups } from '../hooks/useBackups';
 
 function formatAge(timestamp?: string): string {
@@ -48,6 +50,7 @@ export function BackupsPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Backup | null>(null);
+  const [deleteStorageTarget, setDeleteStorageTarget] = useState<BackupStorage | null>(null);
   const [isCreateStorageOpen, setIsCreateStorageOpen] = useState(false);
 
   const filteredBackups = useMemo(() => {
@@ -298,12 +301,15 @@ export function BackupsPage() {
                   <TableCell sx={{ fontWeight: 600 }}>Region</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Endpoint</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Age</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }} align="right">
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                       <CircularProgress size={32} />
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                         Loading backup storages...
@@ -313,7 +319,7 @@ export function BackupsPage() {
                 )}
                 {!isLoading && filteredStorages.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                       <Icon icon="mdi:cloud-search-outline" width={48} height={48} color="#9e9e9e" />
                       <Typography variant="body1" sx={{ mt: 1, fontWeight: 500 }}>
                         No backup storages found
@@ -334,6 +340,17 @@ export function BackupsPage() {
                       <TableCell>{storage.region}</TableCell>
                       <TableCell>{storage.endpointURL}</TableCell>
                       <TableCell>{formatAge(storage.metadata.creationTimestamp)}</TableCell>
+                      <TableCell align="right">
+                        <Tooltip title="Delete Backup Storage">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => setDeleteStorageTarget(storage)}
+                          >
+                            <Icon icon="mdi:delete-outline" width={18} height={18} />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))}
               </TableBody>
@@ -351,6 +368,12 @@ export function BackupsPage() {
         open={Boolean(deleteTarget)}
         backup={deleteTarget}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      <DeleteBackupStorageDialog
+        open={Boolean(deleteStorageTarget)}
+        storage={deleteStorageTarget}
+        onClose={() => setDeleteStorageTarget(null)}
       />
     </SectionBox>
   );
