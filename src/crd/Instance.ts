@@ -62,10 +62,17 @@ export interface InstanceTopology {
   parameters?: Record<string, unknown>;
 }
 
+export interface InstanceBackupRetention {
+  type: 'count' | 'time';
+  count?: number;
+  duration?: string;
+}
+
 export interface InstanceBackupSchedule {
   name: string;
   cron: string;
   enabled: boolean;
+  retention?: InstanceBackupRetention;
   retentionCopies?: number;
   parameters?: Record<string, unknown>;
 }
@@ -155,12 +162,10 @@ export interface InstanceStatusCondition {
 }
 
 export interface InstanceComponentStatus {
-  state?: string;
-  ready?: number;
-  total?: number;
-  podRefs?: Array<{
-    name: string;
-  }>;
+  name?: string;
+  readyReplicas?: number;
+  replicas?: number;
+  selector?: string;
 }
 
 export interface InstanceBackupStorageStatus {

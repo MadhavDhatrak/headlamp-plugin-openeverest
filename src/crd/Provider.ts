@@ -13,6 +13,7 @@ export interface ComponentVersion {
 }
 
 export interface ComponentType {
+  defaultVersion?: string;
   versions?: ComponentVersion[];
 }
 
@@ -66,7 +67,7 @@ export class Provider extends KubeObject<ProviderInterface> {
   }
 
   get defaultVersion(): string | undefined {
-    return this.spec?.versions?.find(v => v.default)?.name ?? this.spec?.defaultVersion;
+    return this.spec?.defaultVersion ?? this.spec?.versions?.[0]?.name;
   }
 
   get availableVersions(): string[] {
