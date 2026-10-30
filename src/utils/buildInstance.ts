@@ -1,4 +1,9 @@
 import { UiComponentNode, UiTopologySchema } from '../schema/uiSchema';
+import {
+  buildBackupSpecFromWizard,
+  FlattenedSchedule,
+  PitrConfigMap,
+} from './backupSchedules';
 
 export interface BuildInstanceParams {
   name: string;
@@ -8,6 +13,9 @@ export interface BuildInstanceParams {
   version?: string;
   formValues: Record<string, any>;
   topologySchema?: UiTopologySchema;
+  schedules?: FlattenedSchedule[];
+  backupClassName?: string;
+  pitrMap?: PitrConfigMap;
 }
 
 export interface KubeInstancePayload {
@@ -97,6 +105,9 @@ export function buildInstancePayload(params: BuildInstanceParams): KubeInstanceP
     version,
     formValues,
     topologySchema,
+    schedules,
+    backupClassName,
+    pitrMap,
   } = params;
 
   const allNodes: UiComponentNode[] = [];
@@ -159,5 +170,14 @@ export function buildInstancePayload(params: BuildInstanceParams): KubeInstanceP
     setIn(payload.spec, pathWithoutSpecPrefix, valueToStore);
   }
 
+  if (schedules && schedules.length > 0 && backupClassName) {
+    const backupConfig = buildBackupSpecFromWizard(schedules, backupClassName, pitrMap);
+    if (backupConfig) {
+      payload.spec.backup = backupConfig;
+    }
+  }
+
   return payload;
 }
+
+

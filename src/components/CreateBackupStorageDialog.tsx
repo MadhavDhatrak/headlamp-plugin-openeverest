@@ -20,6 +20,7 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import React, { useState } from 'react';
 import { BackupStorage } from '../crd/BackupStorage';
 
@@ -110,7 +111,28 @@ export function CreateBackupStorageDialog({
       },
     };
 
+    const secretPayload = {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: `${name.trim()}-credentials`,
+        namespace: namespace.trim() || 'default',
+      },
+      type: 'Opaque',
+      stringData: {
+        AWS_ACCESS_KEY_ID: accessKey.trim(),
+        AWS_SECRET_ACCESS_KEY: secretKey.trim(),
+      },
+    };
+
     try {
+      try {
+        await K8s.ResourceClasses.Secret.apiEndpoint.post(secretPayload);
+      } catch (secErr: any) {
+        if (secErr?.status !== 409) {
+          console.warn('Secret creation warning:', secErr);
+        }
+      }
       await BackupStorage.apiEndpoint.post(payload);
       setIsSubmitting(false);
       resetForm();

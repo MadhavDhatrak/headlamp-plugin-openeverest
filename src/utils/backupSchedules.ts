@@ -140,6 +140,96 @@ export function parseCronDisplay(cron: string): string {
   return `${cron} (${timeStr})`;
 }
 
+export const DAYS_OF_WEEK = [
+  { value: 1, label: 'Mondays' },
+  { value: 2, label: 'Tuesdays' },
+  { value: 3, label: 'Wednesdays' },
+  { value: 4, label: 'Thursdays' },
+  { value: 5, label: 'Fridays' },
+  { value: 6, label: 'Saturdays' },
+  { value: 0, label: 'Sundays' },
+];
+
+export const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
+
+export const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+export const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+
+export interface ScheduleFormTimeState {
+  frequency: ScheduleFrequency;
+  hour: number;
+  minute: number;
+  ampm: 'AM' | 'PM';
+  weekDay: number;
+  monthDay: number;
+}
+
+export function parseCronToState(cron: string): ScheduleFormTimeState {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) {
+    return {
+      frequency: 'Daily',
+      hour: 1,
+      minute: 0,
+      ampm: 'AM',
+      weekDay: 1,
+      monthDay: 1,
+    };
+  }
+
+  const [minPart, hourPart, domPart, , dowPart] = parts;
+  const minute = parseInt(minPart, 10) || 0;
+
+  if (hourPart === '*' && domPart === '*' && dowPart === '*') {
+    return {
+      frequency: 'Hourly',
+      hour: 1,
+      minute,
+      ampm: 'AM',
+      weekDay: 1,
+      monthDay: 1,
+    };
+  }
+
+  const hour24 = parseInt(hourPart, 10) || 0;
+  const hour = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  const ampm = hour24 >= 12 ? 'PM' : 'AM';
+
+  if (dowPart !== '*') {
+    const weekDay = parseInt(dowPart, 10) || 0;
+    return {
+      frequency: 'Weekly',
+      hour,
+      minute,
+      ampm,
+      weekDay,
+      monthDay: 1,
+    };
+  }
+
+  if (domPart !== '*') {
+    const monthDay = parseInt(domPart, 10) || 1;
+    return {
+      frequency: 'Monthly',
+      hour,
+      minute,
+      ampm,
+      weekDay: 1,
+      monthDay,
+    };
+  }
+
+  return {
+    frequency: 'Daily',
+    hour,
+    minute,
+    ampm,
+    weekDay: 1,
+    monthDay: 1,
+  };
+}
+
 export function buildBackupSpecFromWizard(
   schedules: FlattenedSchedule[],
   classRefName?: string,

@@ -21,10 +21,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { CreationSummarySidebar } from '../components/CreationSummarySidebar';
 import { ProviderSelectorGrid } from '../components/ProviderSelectorGrid';
+import { ScheduledBackupsStep } from '../components/ScheduledBackupsStep';
 import { WidgetRenderer } from '../components/widgets';
+import { BackupClass } from '../crd/BackupClass';
+import { BackupStorage } from '../crd/BackupStorage';
 import { Instance } from '../crd/Instance';
 import { Provider } from '../crd/Provider';
 import { resolveTopologyUi, SelectOption } from '../schema/uiSchema';
+import {
+  FlattenedSchedule,
+  getCompatibleBackupClasses,
+  PitrConfigMap,
+} from '../utils/backupSchedules';
 import { buildInstancePayload, extractDefaultValues } from '../utils/buildInstance';
 import { routes } from '../utils/navigation';
 
@@ -39,6 +47,30 @@ export function CreateDatabasePage() {
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [schedules, setSchedules] = useState<FlattenedSchedule[]>([]);
+  const [backupClassName, setBackupClassName] = useState<string>('');
+  const [pitrMap, setPitrMap] = useState<PitrConfigMap>({});
+
+  const [backupClasses] = BackupClass.useList();
+  const [allBackupStorages] = BackupStorage.useList();
+   
+  const backupStorages = useMemo(() => {
+    const ns = namespace.trim() || 'default';
+    return (allBackupStorages || []).filter(bs => bs.metadata.namespace === ns);
+  }, [allBackupStorages, namespace]);
+
+  const compatibleClasses = useMemo(() => {
+    return getCompatibleBackupClasses(backupClasses || [], selectedProvider?.metadata.name || '');
+  }, [backupClasses, selectedProvider]);
+
+  const hasBackupStep = compatibleClasses.length > 0;
+
+  useEffect(() => {
+    setSchedules([]);
+    setBackupClassName('');
+    setPitrMap({});
+  }, [selectedProvider]);
 
   const availableTopologies = useMemo(() => {
     if (!selectedProvider || !selectedProvider.spec?.uiSchema) return [];
@@ -87,8 +119,24 @@ export function CreateDatabasePage() {
   }, [selectedProvider]);
 
   const sectionsOrder = topologySchema?.sectionsOrder || [];
-  const currentSectionKey = sectionsOrder[configStep] || '';
-  const currentSection = topologySchema?.sections?.[currentSectionKey];
+
+  const wizardSteps = useMemo(() => {
+    const steps: Array<{ key: string; label: string; type: 'basic' | 'backup' | 'section' }> = [];
+    steps.push({ key: 'basic', label: 'Basic Information', type: 'basic' });
+    if (hasBackupStep) {
+      steps.push({ key: 'backups', label: 'Backups', type: 'backup' });
+    }
+    for (const secKey of sectionsOrder) {
+      const sec = topologySchema?.sections?.[secKey];
+      steps.push({ key: secKey, label: sec?.label || secKey, type: 'section' });
+    }
+    return steps;
+  }, [hasBackupStep, sectionsOrder, topologySchema]);
+
+  const currentStep = wizardSteps[configStep];
+  const currentSection = currentStep?.type === 'section'
+    ? topologySchema?.sections?.[currentStep.key]
+    : undefined;
 
   const handleSelectProvider = (provider: Provider) => {
     setSelectedProvider(provider);
@@ -108,7 +156,14 @@ export function CreateDatabasePage() {
   };
 
   const handleNextSection = () => {
-    if (configStep < sectionsOrder.length - 1) {
+    if (currentStep?.type === 'basic') {
+      if (!instanceName.trim()) {
+        setSubmitError('Database instance name is required.');
+        return;
+      }
+      setSubmitError(null);
+    }
+    if (configStep < wizardSteps.length - 1) {
       setConfigStep(prev => prev + 1);
     }
   };
@@ -144,6 +199,9 @@ export function CreateDatabasePage() {
         version: formValues['spec.version'],
         formValues,
         topologySchema,
+        schedules,
+        backupClassName,
+        pitrMap,
       });
 
       await Instance.apiEndpoint.post(payload);
@@ -217,73 +275,90 @@ export function CreateDatabasePage() {
         </Card>
       ) : (
         <Box>
-          {sectionsOrder.length > 0 && (
+          {wizardSteps.length > 0 && (
             <Box sx={{ mb: 3 }}>
               <Stepper activeStep={configStep} alternativeLabel>
-                {sectionsOrder.map((secKey, idx) => {
-                  const sec = topologySchema?.sections?.[secKey];
-                  return (
-                    <Step key={secKey} completed={configStep > idx}>
-                      <StepLabel>{sec?.label || secKey}</StepLabel>
-                    </Step>
-                  );
-                })}
+                {wizardSteps.map((step, idx) => (
+                  <Step key={step.key} completed={configStep > idx}>
+                    <StepLabel>{step.label}</StepLabel>
+                  </Step>
+                ))}
               </Stepper>
             </Box>
           )}
-
-          <Card variant="outlined" sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Database Name"
-                  required
-                  value={instanceName}
-                  onChange={e => setInstanceName(e.target.value)}
-                  placeholder="e.g. production-db"
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Namespace"
-                  required
-                  value={namespace}
-                  onChange={e => setNamespace(e.target.value)}
-                  placeholder="default"
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth size="small" disabled={availableTopologies.length <= 1}>
-                  <InputLabel id="topology-label">Topology</InputLabel>
-                  <Select
-                    labelId="topology-label"
-                    label="Topology"
-                    value={selectedTopology}
-                    onChange={e => setSelectedTopology(String(e.target.value))}
-                  >
-                    {availableTopologies.map(t => (
-                      <MenuItem key={t} value={t}>
-                        {t}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-          </Card>
 
           <Grid container spacing={3}>
             <Grid item xs={12} md={8}>
               <Card variant="outlined" sx={{ p: 3 }}>
                 <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-                  {currentSection && (
+                  {currentStep?.type === 'basic' ? (
+                    <Box sx={{ mb: 4 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                        Basic Information
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>
+                        Set the basic identity and placement of your database.
+                      </Typography>
+
+                      <Box display="flex" flexDirection="column" gap={2.5}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Database Name"
+                          required
+                          value={instanceName}
+                          onChange={e => {
+                            setInstanceName(e.target.value);
+                            if (submitError) setSubmitError(null);
+                          }}
+                          placeholder="e.g. production-db"
+                        />
+
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Namespace"
+                          required
+                          value={namespace}
+                          onChange={e => setNamespace(e.target.value)}
+                          placeholder="default"
+                        />
+
+                        <FormControl fullWidth size="small" disabled={availableTopologies.length <= 1}>
+                          <InputLabel id="topology-label">Topology</InputLabel>
+                          <Select
+                            labelId="topology-label"
+                            label="Topology"
+                            value={selectedTopology}
+                            onChange={e => setSelectedTopology(String(e.target.value))}
+                          >
+                            {availableTopologies.map(t => (
+                              <MenuItem key={t} value={t}>
+                                {t}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    </Box>
+                  ) : currentStep?.type === 'backup' ? (
+                    <Box sx={{ mb: 4 }}>
+                      <ScheduledBackupsStep
+                        namespace={namespace.trim() || 'default'}
+                        provider={selectedProvider?.metadata.name || ''}
+                        schedules={schedules}
+                        onSchedulesChange={setSchedules}
+                        backupClassName={backupClassName}
+                        onBackupClassNameChange={setBackupClassName}
+                        pitrMap={pitrMap}
+                        onPitrMapChange={setPitrMap}
+                        backupStorages={backupStorages}
+                      />
+                    </Box>
+                  ) : currentSection ? (
                     <Box sx={{ mb: 4 }}>
                       <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {currentSection.label || currentSectionKey}
+                        {currentSection.label || currentStep?.key}
                       </Typography>
                       {currentSection.description && (
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -311,7 +386,7 @@ export function CreateDatabasePage() {
                         })}
                       </Box>
                     </Box>
-                  )}
+                  ) : null}
 
                   <Box
                     display="flex"
@@ -339,7 +414,7 @@ export function CreateDatabasePage() {
                         Cancel
                       </Button>
 
-                      {configStep < sectionsOrder.length - 1 ? (
+                      {configStep < wizardSteps.length - 1 ? (
                         <Button
                           variant="contained"
                           color="primary"
@@ -373,6 +448,9 @@ export function CreateDatabasePage() {
                 namespace={namespace}
                 topologySchema={topologySchema}
                 formValues={formValues}
+                schedules={schedules}
+                hasBackupStep={hasBackupStep}
+                pitrMap={pitrMap}
               />
             </Grid>
           </Grid>
