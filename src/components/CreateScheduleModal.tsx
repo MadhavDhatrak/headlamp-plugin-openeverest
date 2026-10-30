@@ -28,6 +28,7 @@ import {
   FlattenedSchedule,
   HOURS,
   MINUTES,
+  parseCronToState,
   ScheduleFrequency,
   timeToCron,
 } from '../utils/backupSchedules';
@@ -36,6 +37,8 @@ export interface CreateScheduleModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (schedule: FlattenedSchedule, backupClassName: string) => void;
+  mode?: 'create' | 'edit';
+  initialScheduleData?: FlattenedSchedule | null;
   existingSchedules?: FlattenedSchedule[];
   availableBackupClasses: BackupClass[];
   selectedBackupClassName?: string;
@@ -47,6 +50,8 @@ export function CreateScheduleModal({
   open,
   onClose,
   onSave,
+  mode = 'create',
+  initialScheduleData,
   existingSchedules = [],
   availableBackupClasses = [],
   selectedBackupClassName = '',
@@ -70,20 +75,35 @@ export function CreateScheduleModal({
     if (!open) return;
 
     setNameTouched(false);
-    setName('');
-    setRetentionCopies(0);
-    setFrequency('Daily');
-    setHour(1);
-    setMinute(0);
-    setAmpm('AM');
-    setWeekDay(1);
-    setMonthDay(1);
-    setBackupType('full');
 
-    if (backupStorages.length > 0) {
-      setStorageName(backupStorages[0].metadata.name);
+    if (mode === 'edit' && initialScheduleData) {
+      setName(initialScheduleData.name);
+      setStorageName(initialScheduleData.storageName);
+      setRetentionCopies(initialScheduleData.retentionCopies);
+      const parsed = parseCronToState(initialScheduleData.cron);
+      setFrequency(parsed.frequency);
+      setHour(parsed.hour);
+      setMinute(parsed.minute);
+      setAmpm(parsed.ampm);
+      setWeekDay(parsed.weekDay);
+      setMonthDay(parsed.monthDay);
+      setBackupType((initialScheduleData.parameters as any)?.type || 'full');
     } else {
-      setStorageName('');
+      setName('');
+      setRetentionCopies(0);
+      setFrequency('Daily');
+      setHour(1);
+      setMinute(0);
+      setAmpm('AM');
+      setWeekDay(1);
+      setMonthDay(1);
+      setBackupType('full');
+
+      if (backupStorages.length > 0) {
+        setStorageName(backupStorages[0].metadata.name);
+      } else {
+        setStorageName('');
+      }
     }
 
     if (selectedBackupClassName) {
@@ -93,7 +113,7 @@ export function CreateScheduleModal({
     } else {
       setBackupClassName('');
     }
-  }, [open, selectedBackupClassName, availableBackupClasses, backupStorages]);
+  }, [open, mode, initialScheduleData, selectedBackupClassName, availableBackupClasses, backupStorages]);
 
   const usedStoragesCount = useMemo(() => {
     const usedNames = new Set(existingSchedules.map(s => s.storageName));
@@ -126,12 +146,14 @@ export function CreateScheduleModal({
     if (!k8sDnsRegex.test(trimmed)) {
       return 'Name must consist of lower case alphanumeric characters or "-", and must start and end with an alphanumeric character';
     }
-    const isDuplicate = existingSchedules.some(s => s.name === trimmed);
+    const isDuplicate = existingSchedules.some(
+      s => s.name === trimmed && (mode === 'create' || s.name !== initialScheduleData?.name)
+    );
     if (isDuplicate) {
       return 'You already have a schedule with the same name.';
     }
     return null;
-  }, [name, nameTouched, existingSchedules]);
+  }, [name, nameTouched, mode, existingSchedules, initialScheduleData]);
 
   const storageError = useMemo(() => {
     if (!storageName) {
@@ -150,7 +172,7 @@ export function CreateScheduleModal({
     const schedule: FlattenedSchedule = {
       name: name.trim(),
       cron: liveCron,
-      enabled: true,
+      enabled: initialScheduleData ? initialScheduleData.enabled : true,
       storageName,
       retentionCopies: Math.max(0, retentionCopies || 0),
       parameters: {
@@ -167,7 +189,7 @@ export function CreateScheduleModal({
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
           <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-            Create backup schedule
+            {mode === 'create' ? 'Create backup schedule' : 'Edit backup schedule'}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Set up regular backups to protect your database
@@ -186,6 +208,7 @@ export function CreateScheduleModal({
               fullWidth
               size="small"
               value={name}
+              disabled={mode === 'edit'}
               onChange={e => {
                 setName(e.target.value);
                 setNameTouched(true);
@@ -413,7 +436,7 @@ export function CreateScheduleModal({
             disabled={!isValid}
             color="primary"
           >
-            Create
+            {mode === 'create' ? 'Create' : 'Save'}
           </Button>
         </DialogActions>
       </form>
