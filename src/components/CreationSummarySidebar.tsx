@@ -11,6 +11,7 @@ import React from 'react';
 import { Provider } from '../crd/Provider';
 import { UiTopologySchema } from '../schema/uiSchema';
 import { flattenComponents } from '../utils/buildInstance';
+import { FlattenedSchedule, PitrConfigMap } from '../utils/backupSchedules';
 
 export interface CreationSummarySidebarProps {
   provider?: Provider | null;
@@ -19,6 +20,9 @@ export interface CreationSummarySidebarProps {
   namespace?: string;
   topologySchema?: UiTopologySchema;
   formValues?: Record<string, any>;
+  schedules?: FlattenedSchedule[];
+  hasBackupStep?: boolean;
+  pitrMap?: PitrConfigMap;
 }
 
 export const CreationSummarySidebar: React.FC<CreationSummarySidebarProps> = ({
@@ -28,6 +32,9 @@ export const CreationSummarySidebar: React.FC<CreationSummarySidebarProps> = ({
   namespace = 'default',
   topologySchema,
   formValues = {},
+  schedules = [],
+  hasBackupStep = false,
+  pitrMap = {},
 }) => {
   const sectionsOrder = topologySchema?.sectionsOrder || [];
 
@@ -117,6 +124,44 @@ export const CreationSummarySidebar: React.FC<CreationSummarySidebarProps> = ({
             </Box>
           )}
         </Box>
+
+        {hasBackupStep && (
+          <React.Fragment>
+            <Divider sx={{ my: 1.5 }} />
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              fontWeight={700}
+              display="block"
+              mb={1}
+              sx={{ textTransform: 'uppercase' }}
+            >
+              Backups
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={1}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="body2" color="text.secondary">
+                  Schedules:
+                </Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  {schedules.length === 0
+                    ? 'None configured'
+                    : `${schedules.length} schedule${schedules.length > 1 ? 's' : ''}`}
+                </Typography>
+              </Box>
+              {Object.values(pitrMap).some(p => p.enabled) && (
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary">
+                    PITR:
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600} color="primary.main">
+                    Enabled
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </React.Fragment>
+        )}
 
         {sectionsOrder.map(secKey => {
           const section = topologySchema?.sections?.[secKey];
