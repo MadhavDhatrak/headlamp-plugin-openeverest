@@ -53,15 +53,15 @@ export function ScheduledBackupsStep({
 }: ScheduledBackupsStepProps) {
   const [backupClasses] = BackupClass.useList();
   const [openScheduleModal, setOpenScheduleModal] = useState(false);
+  const [scheduleModalMode, setScheduleModalMode] = useState<'create' | 'edit'>('create');
+  const [selectedSchedule, setSelectedSchedule] = useState<FlattenedSchedule | null>(null);
   const [openCreateStorageDialog, setOpenCreateStorageDialog] = useState(false);
 
   // Filter BackupClasses that strictly support this database provider 
   const compatibleClasses = useMemo(() => {
     return getCompatibleBackupClasses(backupClasses || [], provider);
   }, [backupClasses, provider]);
-  
 
-  
   const activeBackupClass = useMemo(() => {
     if (backupClassName) {
       return compatibleClasses.find(bc => bc.metadata.name === backupClassName) || compatibleClasses[0];
@@ -70,6 +70,14 @@ export function ScheduledBackupsStep({
   }, [compatibleClasses, backupClassName]);
 
   const handleOpenCreateModal = () => {
+    setSelectedSchedule(null);
+    setScheduleModalMode('create');
+    setOpenScheduleModal(true);
+  };
+
+  const handleOpenEditModal = (sched: FlattenedSchedule) => {
+    setSelectedSchedule(sched);
+    setScheduleModalMode('edit');
     setOpenScheduleModal(true);
   };
 
@@ -81,7 +89,14 @@ export function ScheduledBackupsStep({
     if (chosenClassName && chosenClassName !== backupClassName) {
       onBackupClassNameChange(chosenClassName);
     }
-    onSchedulesChange([...schedules, savedSchedule]);
+
+    if (scheduleModalMode === 'edit' && selectedSchedule) {
+      onSchedulesChange(
+        schedules.map(s => (s.name === selectedSchedule.name ? savedSchedule : s))
+      );
+    } else {
+      onSchedulesChange([...schedules, savedSchedule]);
+    }
   };
 
   const handlePitrToggle = (storageName: string, enabled: boolean) => {
@@ -214,6 +229,15 @@ export function ScheduledBackupsStep({
                         </Box>
 
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Tooltip title="Edit schedule">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleOpenEditModal(sched)}
+                              aria-label="edit schedule"
+                            >
+                              <Icon icon="mdi:pencil-outline" width={18} />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Delete schedule">
                             <IconButton
                               size="small"
@@ -297,6 +321,8 @@ export function ScheduledBackupsStep({
           open={openScheduleModal}
           onClose={() => setOpenScheduleModal(false)}
           onSave={handleSaveSchedule}
+          mode={scheduleModalMode}
+          initialScheduleData={selectedSchedule}
           existingSchedules={schedules}
           availableBackupClasses={compatibleClasses}
           selectedBackupClassName={backupClassName}
