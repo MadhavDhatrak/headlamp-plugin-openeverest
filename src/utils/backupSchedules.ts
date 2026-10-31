@@ -294,3 +294,139 @@ export function flattenSchedules(instance: Instance): FlattenedSchedule[] {
     }))
   );
 }
+
+export interface InstanceScheduleRow extends FlattenedSchedule {
+  instanceName: string;
+  namespace: string;
+}
+
+export function flattenAllInstanceSchedules(instances: Instance[]): InstanceScheduleRow[] {
+  return instances.flatMap(instance => {
+    const schedules = flattenSchedules(instance);
+    const instanceName = instance.metadata?.name || '';
+    const namespace = instance.metadata?.namespace || '';
+    return schedules.map(s => ({
+      ...s,
+      instanceName,
+      namespace,
+    }));
+  });
+}
+
+export function scheduleToApi(schedule: FlattenedSchedule): InstanceBackupSchedule {
+  return {
+    name: schedule.name,
+    cron: schedule.cron,
+    enabled: schedule.enabled,
+    retention: {
+      type: 'count',
+      count: schedule.retentionCopies,
+    },
+    retentionCopies: schedule.retentionCopies,
+    ...(schedule.parameters ? { parameters: schedule.parameters } : {}),
+  };
+}
+
+export function buildSchedulePatchPayload(
+  instance: Instance,
+  updatedStorages: InstanceBackupStorage[]
+): { spec: { backup: InstanceBackupConfig } } {
+  return {
+    spec: {
+      backup: {
+        enabled: instance.spec?.backup?.enabled ?? true,
+        ...(instance.spec?.backup?.classRef ? { classRef: instance.spec.backup.classRef } : {}),
+        storages: updatedStorages,
+      },
+    },
+  };
+}
+
+export function addScheduleToInstance(
+  instance: Instance,
+  newSchedule: FlattenedSchedule
+): { spec: { backup: InstanceBackupConfig } } {
+  const existingStorages = instance.spec?.backup?.storages ?? [];
+  const targetStorageName = newSchedule.storageName;
+
+  const storageExists = existingStorages.some(s => s.storageRef?.name === targetStorageName);
+
+  let updatedStorages: InstanceBackupStorage[];
+  if (storageExists) {
+    updatedStorages = existingStorages.map(storage => {
+      if (storage.storageRef?.name === targetStorageName) {
+        return {
+          ...storage,
+          schedules: [...(storage.schedules ?? []), scheduleToApi(newSchedule)],
+        };
+      }
+      return storage;
+    });
+  } else {
+    updatedStorages = [
+      ...existingStorages,
+      {
+        storageRef: { name: targetStorageName },
+        schedules: [scheduleToApi(newSchedule)],
+      },
+    ];
+  }
+
+  return buildSchedulePatchPayload(instance, updatedStorages);
+}
+
+export function updateScheduleInInstance(
+  instance: Instance,
+  scheduleName: string,
+  updatedSchedule: FlattenedSchedule
+): { spec: { backup: InstanceBackupConfig } } {
+  const existingStorages = instance.spec?.backup?.storages ?? [];
+
+  // Remove the old schedule from wherever it was, and put the updated schedule in updatedSchedule.storageName
+  const storagesWithoutSchedule = existingStorages.map(storage => ({
+    ...storage,
+    schedules: (storage.schedules ?? []).filter(s => s.name !== scheduleName),
+  }));
+
+  const storageExists = storagesWithoutSchedule.some(
+    s => s.storageRef?.name === updatedSchedule.storageName
+  );
+ 
+  let updatedStorages: InstanceBackupStorage[];
+  if (storageExists) {
+    updatedStorages = storagesWithoutSchedule.map(storage => {
+      if (storage.storageRef?.name === updatedSchedule.storageName) {
+        return {
+          ...storage,
+          schedules: [...(storage.schedules ?? []), scheduleToApi(updatedSchedule)],
+        };
+      }
+      return storage;
+    });
+  } else {
+    updatedStorages = [
+      ...storagesWithoutSchedule,
+      {
+        storageRef: { name: updatedSchedule.storageName },
+        schedules: [scheduleToApi(updatedSchedule)],
+      },
+    ];
+  }
+
+  return buildSchedulePatchPayload(instance, updatedStorages);
+}
+
+export function deleteScheduleFromInstance(
+  instance: Instance,
+  scheduleName: string
+): { spec: { backup: InstanceBackupConfig } } {
+  const existingStorages = instance.spec?.backup?.storages ?? [];
+
+  const updatedStorages = existingStorages.map(storage => ({
+    ...storage,
+    schedules: (storage.schedules ?? []).filter(s => s.name !== scheduleName),
+  }));
+
+  return buildSchedulePatchPayload(instance, updatedStorages);
+}
+
