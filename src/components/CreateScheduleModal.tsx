@@ -21,10 +21,12 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { BackupClass } from '../crd/BackupClass';
 import { BackupStorage } from '../crd/BackupStorage';
+import { Instance } from '../crd/Instance';
 import {
   cronToHumanDescription,
   DAYS_OF_MONTH,
   DAYS_OF_WEEK,
+  flattenSchedules,
   FlattenedSchedule,
   HOURS,
   MINUTES,
@@ -36,14 +38,16 @@ import {
 export interface CreateScheduleModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (schedule: FlattenedSchedule, backupClassName: string) => void;
+  onSave: (schedule: FlattenedSchedule, backupClassName: string, targetInstanceName?: string) => void;
   mode?: 'create' | 'edit';
   initialScheduleData?: FlattenedSchedule | null;
   existingSchedules?: FlattenedSchedule[];
-  availableBackupClasses: BackupClass[];
+  availableBackupClasses?: BackupClass[];
   selectedBackupClassName?: string;
   lockBackupClass?: boolean;
   backupStorages: BackupStorage[];
+  availableInstances?: Instance[];
+  selectedInstanceName?: string;
 }
 
 export function CreateScheduleModal({
@@ -57,7 +61,10 @@ export function CreateScheduleModal({
   selectedBackupClassName = '',
   lockBackupClass = false,
   backupStorages = [],
+  availableInstances,
+  selectedInstanceName = '',
 }: CreateScheduleModalProps) {
+  const [targetInstanceName, setTargetInstanceName] = useState(selectedInstanceName);
   const [name, setName] = useState('');
   const [backupClassName, setBackupClassName] = useState('');
   const [storageName, setStorageName] = useState('');
@@ -75,6 +82,12 @@ export function CreateScheduleModal({
     if (!open) return;
 
     setNameTouched(false);
+
+    if (selectedInstanceName) {
+      setTargetInstanceName(selectedInstanceName);
+    } else if (availableInstances && availableInstances.length > 0) {
+      setTargetInstanceName(availableInstances[0].metadata?.name || '');
+    }
 
     if (mode === 'edit' && initialScheduleData) {
       setName(initialScheduleData.name);
@@ -106,22 +119,40 @@ export function CreateScheduleModal({
       }
     }
 
-    if (selectedBackupClassName) {
+    const activeTargetInstance = availableInstances?.find(
+      inst => inst.metadata.name === (selectedInstanceName || targetInstanceName)
+    );
+    const instanceClassRef = activeTargetInstance?.spec?.backup?.classRef?.name;
+
+    if (instanceClassRef) {
+      setBackupClassName(instanceClassRef);
+    } else if (selectedBackupClassName) {
       setBackupClassName(selectedBackupClassName);
     } else if (availableBackupClasses.length > 0) {
       setBackupClassName(availableBackupClasses[0].metadata.name);
     } else {
       setBackupClassName('');
     }
-  }, [open, mode, initialScheduleData, selectedBackupClassName, availableBackupClasses, backupStorages]);
+  }, [open, mode, initialScheduleData, selectedBackupClassName, availableBackupClasses, backupStorages, availableInstances, selectedInstanceName, targetInstanceName]);
+
+  const targetInstance = useMemo(() => {
+    return availableInstances?.find(inst => inst.metadata.name === targetInstanceName);
+  }, [availableInstances, targetInstanceName]);
+
+  const effectiveExistingSchedules = useMemo(() => {
+    if (targetInstance) {
+      return flattenSchedules(targetInstance);
+    }
+    return existingSchedules;
+  }, [targetInstance, existingSchedules]);
 
   const usedStoragesCount = useMemo(() => {
-    const usedNames = new Set(existingSchedules.map(s => s.storageName));
+    const usedNames = new Set(effectiveExistingSchedules.map(s => s.storageName));
     if (storageName) {
       usedNames.add(storageName);
     }
     return usedNames.size;
-  }, [existingSchedules, storageName]);
+  }, [effectiveExistingSchedules, storageName]);
 
   const liveCron = useMemo(() => {
     return timeToCron(frequency, hour, minute, ampm, weekDay, monthDay);
@@ -146,14 +177,14 @@ export function CreateScheduleModal({
     if (!k8sDnsRegex.test(trimmed)) {
       return 'Name must consist of lower case alphanumeric characters or "-", and must start and end with an alphanumeric character';
     }
-    const isDuplicate = existingSchedules.some(
+    const isDuplicate = effectiveExistingSchedules.some(
       s => s.name === trimmed && (mode === 'create' || s.name !== initialScheduleData?.name)
     );
     if (isDuplicate) {
       return 'You already have a schedule with the same name.';
     }
     return null;
-  }, [name, nameTouched, mode, existingSchedules, initialScheduleData]);
+  }, [name, nameTouched, mode, effectiveExistingSchedules, initialScheduleData]);
 
   const storageError = useMemo(() => {
     if (!storageName) {
@@ -180,7 +211,7 @@ export function CreateScheduleModal({
       },
     };
 
-    onSave(schedule, backupClassName);
+    onSave(schedule, backupClassName, targetInstanceName);
     onClose();
   };
 
@@ -202,6 +233,31 @@ export function CreateScheduleModal({
           </Typography>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {availableInstances && availableInstances.length > 0 && (
+              <FormControl fullWidth size="small" disabled={mode === 'edit'}>
+                <InputLabel id="database-instance-select-label">Database instance</InputLabel>
+                <Select
+                  labelId="database-instance-select-label"
+                  label="Database instance"
+                  value={targetInstanceName}
+                  onChange={e => {
+                    const newInst = e.target.value;
+                    setTargetInstanceName(newInst);
+                    const found = availableInstances.find(inst => inst.metadata.name === newInst);
+                    if (found?.spec?.backup?.classRef?.name) {
+                      setBackupClassName(found.spec.backup.classRef.name);
+                    }
+                  }}
+                >
+                  {availableInstances.map(inst => (
+                    <MenuItem key={inst.metadata.name} value={inst.metadata.name}>
+                      {inst.metadata.name} {inst.providerName ? `(${inst.providerName})` : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
             <TextField
               label="Backup name"
               required
