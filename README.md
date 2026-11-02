@@ -5,25 +5,26 @@
 
 ---
 
-##  Table of Contents
+## Table of Contents
 
-- [Overview](#-overview)
-- [MVP Feature Status](#-mvp-feature-status)
-- [Prerequisites](#-prerequisites)
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Contributing](#-contributing)
+- [Overview](#overview)
+- [MVP Feature Status](#mvp-feature-status)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
 
 ---
 
-##  Overview
+## Overview
 
 The **OpenEverest Headlamp Plugin** brings the power of [OpenEverest V2](https://github.com/openeverest) directly into the [Headlamp](https://headlamp.dev) Kubernetes web and desktop UI.
+
 Database administrators and developers can browse database engine operators, provision multi-node production databases, trigger instant snapshots, and manage recurring backup schedules across clusters—all natively within Headlamp without leaving their Kubernetes console.
 
 ---
 
-##  MVP Feature Status
+## MVP Feature Status
 
 | Feature | Status | Description |
 | :--- | :---: | :--- |
@@ -38,7 +39,7 @@ Database administrators and developers can browse database engine operators, pro
 
 ---
 
-##  Prerequisites
+## Prerequisites
 
 To run and develop with this plugin, ensure you have:
 
@@ -56,7 +57,7 @@ To run and develop with this plugin, ensure you have:
 
 ---
 
-##  Quick Start
+## Quick Start
 
 ### 1. Clone & Install Dependencies
 ```bash
@@ -87,7 +88,7 @@ Restart or refresh Headlamp—**OpenEverest** will appear in the sidebar!
 
 ---
 
-##  Project Structure
+## Project Structure
 
 ```
 headlamp-openeverest/
@@ -102,7 +103,7 @@ headlamp-openeverest/
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions of all kinds! Whether it's reporting a bug, improving documentation, or adding new features:
 1. Fork the repository and create your feature branch (`git checkout -b feat/amazing-feature`).
