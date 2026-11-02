@@ -298,6 +298,7 @@ export function flattenSchedules(instance: Instance): FlattenedSchedule[] {
 export interface InstanceScheduleRow extends FlattenedSchedule {
   instanceName: string;
   namespace: string;
+  backupClassName?: string;
 }
 
 export function flattenAllInstanceSchedules(instances: Instance[]): InstanceScheduleRow[] {
@@ -305,10 +306,12 @@ export function flattenAllInstanceSchedules(instances: Instance[]): InstanceSche
     const schedules = flattenSchedules(instance);
     const instanceName = instance.metadata?.name || '';
     const namespace = instance.metadata?.namespace || '';
+    const backupClassName = instance.spec?.backup?.classRef?.name;
     return schedules.map(s => ({
       ...s,
       instanceName,
       namespace,
+      backupClassName,
     }));
   });
 }

@@ -7,10 +7,17 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  FormControl,
   Grid,
   IconButton,
   InputAdornment,
+  InputLabel,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
+  Select,
   Tab,
   Table,
   TableBody,
@@ -26,11 +33,25 @@ import {
 import React, { useMemo, useState } from 'react';
 import { BackupStatusChip } from '../components/BackupStatusChip';
 import { CreateBackupStorageDialog } from '../components/CreateBackupStorageDialog';
+import { CreateOnDemandBackupDialog } from '../components/CreateOnDemandBackupDialog';
+import { CreateScheduleModal } from '../components/CreateScheduleModal';
 import { DeleteBackupDialog } from '../components/DeleteBackupDialog';
 import { DeleteBackupStorageDialog } from '../components/DeleteBackupStorageDialog';
+import { DeleteScheduleDialog } from '../components/DeleteScheduleDialog';
 import { Backup } from '../crd/Backup';
+import { BackupClass } from '../crd/BackupClass';
 import { BackupStorage } from '../crd/BackupStorage';
 import { useBackups } from '../hooks/useBackups';
+import { useInstances } from '../hooks/useInstances';
+import {
+  addScheduleToInstance,
+  flattenAllInstanceSchedules,
+  FlattenedSchedule,
+  getCompatibleBackupClasses,
+  InstanceScheduleRow,
+  parseCronDisplay,
+  updateScheduleInInstance,
+} from '../utils/backupSchedules';
 
 function formatAge(timestamp?: string): string {
   if (!timestamp) return '-';
@@ -47,12 +68,46 @@ function formatAge(timestamp?: string): string {
 
 export function BackupsPage() {
   const { backups, backupStorages, isLoading, error, stats } = useBackups();
+  const { instances, isLoading: isInstancesLoading } = useInstances();
+  const [backupClasses] = BackupClass.useList();
+
   const [activeTab, setActiveTab] = useState(0);
   const [search, setSearch] = useState('');
+  const [filterInstance, setFilterInstance] = useState<string>('all');
+
+  // Top Create Dropdown menu state
+  const [createMenuAnchor, setCreateMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Dialog & Modal states
+  const [isOnDemandOpen, setIsOnDemandOpen] = useState(false);
+  const [isCreateStorageOpen, setIsCreateStorageOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleModalMode, setScheduleModalMode] = useState<'create' | 'edit'>('create');
+  const [selectedScheduleData, setSelectedScheduleData] = useState<{
+    schedule: FlattenedSchedule;
+    instanceName: string;
+  } | null>(null);
+
   const [deleteTarget, setDeleteTarget] = useState<Backup | null>(null);
   const [deleteStorageTarget, setDeleteStorageTarget] = useState<BackupStorage | null>(null);
-  const [isCreateStorageOpen, setIsCreateStorageOpen] = useState(false);
+  const [deleteScheduleTarget, setDeleteScheduleTarget] = useState<InstanceScheduleRow | null>(null);
 
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+ 
+  const backupEligibleInstances = useMemo(() => {
+    return instances.filter(inst => {
+      if (inst.spec?.backup?.classRef?.name) return true;
+      return getCompatibleBackupClasses(backupClasses || [], inst.providerName).length > 0;
+    });
+  }, [instances, backupClasses]);
+
+  // Flatten active schedules across all database instances
+  const allSchedules = useMemo(() => {
+    return flattenAllInstanceSchedules(instances);
+  }, [instances]);
+
+  // Filtered Backups (Tab 0)
   const filteredBackups = useMemo(() => {
     if (!search.trim()) return backups;
     const q = search.toLowerCase();
@@ -70,6 +125,30 @@ export function BackupsPage() {
     });
   }, [backups, search]);
 
+  // Filtered Schedules (Tab 1)
+  const filteredSchedules = useMemo(() => {
+    return allSchedules.filter(s => {
+      if (filterInstance !== 'all' && s.instanceName !== filterInstance) {
+        return false;
+      }
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      const name = s.name.toLowerCase();
+      const instName = s.instanceName.toLowerCase();
+      const cron = s.cron.toLowerCase();
+      const storage = (s.storageName || '').toLowerCase();
+      const bClass = (s.backupClassName || '').toLowerCase();
+      return (
+        name.includes(q) ||
+        instName.includes(q) ||
+        cron.includes(q) ||
+        storage.includes(q) ||
+        bClass.includes(q)
+      );
+    });
+  }, [allSchedules, filterInstance, search]);
+
+  // Filtered Storages (Tab 2)
   const filteredStorages = useMemo(() => {
     if (!search.trim()) return backupStorages;
     const q = search.toLowerCase();
@@ -81,24 +160,121 @@ export function BackupsPage() {
     });
   }, [backupStorages, search]);
 
+  // Action handlers
+  const handleOpenCreateSchedule = () => {
+    setScheduleModalMode('create');
+    setSelectedScheduleData(null);
+    setScheduleError(null);
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleEditSchedule = (row: InstanceScheduleRow) => {
+    setScheduleModalMode('edit');
+    setSelectedScheduleData({
+      schedule: row,
+      instanceName: row.instanceName,
+    });
+    setScheduleError(null);
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleSaveSchedule = async (
+    schedule: FlattenedSchedule,
+    _chosenClassName: string,
+    targetInstanceName?: string
+  ) => {
+    try {
+      setScheduleError(null);
+      const instanceName = targetInstanceName || selectedScheduleData?.instanceName;
+      const targetInstance = instances.find(inst => inst.metadata.name === instanceName);
+
+      if (!targetInstance) {
+        setScheduleError(`Database instance "${instanceName}" not found on cluster.`);
+        return;
+      }
+
+      const patchPayload =
+        scheduleModalMode === 'edit'
+          ? updateScheduleInInstance(targetInstance, schedule.name, schedule)
+          : addScheduleToInstance(targetInstance, schedule);
+
+      await targetInstance.patch(patchPayload);
+      setIsScheduleModalOpen(false);
+      setSelectedScheduleData(null);
+    } catch (err: any) {
+      console.error('Failed to save schedule:', err);
+      setScheduleError(err?.message || 'Failed to update schedule on database instance');
+    }
+  };
+
   return (
     <SectionBox
       title="Backups & Storage"
       headerProps={{
         actions: [
-          <Button
-            key="refresh"
-            variant="outlined"
-            size="small"
-            startIcon={<Icon icon="mdi:refresh" />}
-            onClick={() => window.location.reload()}
-          >
-            Refresh
-          </Button>,
+          <Box key="header-actions" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Button
+              key="create-backup-btn"
+              variant="contained"
+              size="small"
+              startIcon={<Icon icon="mdi:plus" />}
+              endIcon={<Icon icon="mdi:chevron-down" />}
+              onClick={e => setCreateMenuAnchor(e.currentTarget)}
+            >
+              Create backup
+            </Button>
+            <Button
+              key="refresh"
+              variant="outlined"
+              size="small"
+              startIcon={<Icon icon="mdi:refresh" />}
+              onClick={() => window.location.reload()}
+            >
+              Refresh
+            </Button>
+          </Box>,
         ],
       }}
     >
+      <Menu
+        anchorEl={createMenuAnchor}
+        open={Boolean(createMenuAnchor)}
+        onClose={() => setCreateMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem
+          onClick={() => {
+            setCreateMenuAnchor(null);
+            setIsOnDemandOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <Icon icon="mdi:camera-outline" width={20} height={20} />
+          </ListItemIcon>
+          <ListItemText
+            primary="On-demand (Now)"
+            secondary="Trigger an immediate snapshot backup"
+          />
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setCreateMenuAnchor(null);
+            handleOpenCreateSchedule();
+          }}
+        >
+          <ListItemIcon>
+            <Icon icon="mdi:clock-outline" width={20} height={20} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Recurring schedule"
+            secondary="Configure automated cron-based backups"
+          />
+        </MenuItem>
+      </Menu>
+
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Metric Cards */}
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={2.4}>
             <Card variant="outlined">
@@ -174,11 +350,23 @@ export function BackupsPage() {
           </Alert>
         )}
 
+        {scheduleError && (
+          <Alert severity="error" onClose={() => setScheduleError(null)}>
+            {scheduleError}
+          </Alert>
+        )}
+
+        {/* 3 Dedicated Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
             <Tab
               label={`Backups (${backups.length})`}
               icon={<Icon icon="mdi:database-arrow-up" width={18} height={18} />}
+              iconPosition="start"
+            />
+            <Tab
+              label={`Schedules (${allSchedules.length})`}
+              icon={<Icon icon="mdi:calendar-clock" width={18} height={18} />}
               iconPosition="start"
             />
             <Tab
@@ -189,23 +377,75 @@ export function BackupsPage() {
           </Tabs>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <TextField
-            size="small"
-            placeholder={activeTab === 0 ? 'Search backups by name, database, storage...' : 'Search storage by name, bucket...'}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Icon icon="mdi:magnify" width={20} height={20} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ width: 360 }}
-          />
+        {/* Filter and Tab Action Controls */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap' }}>
+            <TextField
+              size="small"
+              variant="outlined"
+              placeholder={
+                activeTab === 0
+                  ? 'Search backups by name, database, storage...'
+                  : activeTab === 1
+                  ? 'Search schedules by name, database, cron...'
+                  : 'Search storage by name, bucket...'
+              }
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Icon icon="mdi:magnify" width={18} height={18} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ width: { xs: '100%', sm: 340 } }}
+            />
+
+            {activeTab === 1 && (
+              <FormControl size="small" variant="outlined" sx={{ minWidth: 220 }}>
+                <InputLabel id="filter-instance-label">Filter by Database</InputLabel>
+                <Select
+                  labelId="filter-instance-label"
+                  value={filterInstance}
+                  label="Filter by Database"
+                  onChange={e => setFilterInstance(e.target.value)}
+                >
+                  <MenuItem value="all">All Databases</MenuItem>
+                  {backupEligibleInstances.map(inst => (
+                    <MenuItem key={inst.metadata.name} value={inst.metadata.name}>
+                      {inst.metadata.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+
+          {/* Contextual Action Button per Tab */}
+          {activeTab === 0 && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Icon icon="mdi:camera-plus-outline" />}
+              onClick={() => setIsOnDemandOpen(true)}
+            >
+              Create Snapshot
+            </Button>
+          )}
 
           {activeTab === 1 && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Icon icon="mdi:calendar-plus" />}
+              onClick={handleOpenCreateSchedule}
+            >
+              Add Schedule
+            </Button>
+          )}
+
+          {activeTab === 2 && (
             <Button
               variant="contained"
               size="small"
@@ -217,6 +457,7 @@ export function BackupsPage() {
           )}
         </Box>
 
+        {/* Tab 0: Physical Snapshot Backups */}
         {activeTab === 0 && (
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">
@@ -289,7 +530,113 @@ export function BackupsPage() {
           </TableContainer>
         )}
 
+        {/* Tab 1: Active Recurring Schedules */}
         {activeTab === 1 && (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600 }}>Schedule Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Database Instance</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Frequency & Timing</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Storage / Class</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Retention</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }} align="right">
+                    Actions
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isInstancesLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={32} />
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Loading schedules...
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isInstancesLoading && filteredSchedules.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                      <Icon icon="mdi:calendar-remove-outline" width={48} height={48} color="#9e9e9e" />
+                      <Typography variant="body1" sx={{ mt: 1, fontWeight: 500 }}>
+                        No backup schedules found
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {search || filterInstance !== 'all'
+                          ? 'Try adjusting your search or database filter'
+                          : 'Configure automated backup schedules for your database instances'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isInstancesLoading &&
+                  filteredSchedules.map(row => {
+                    const timing = parseCronDisplay(row.cron);
+                    return (
+                      <TableRow key={`${row.instanceName}-${row.name}`} hover>
+                        <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Icon icon="mdi:database" width={16} height={16} color="#757575" />
+                            <Typography variant="body2">{row.instanceName}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {timing}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                            {row.cron}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {row.storageName || row.backupClassName || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {row.retentionCopies > 0 ? (
+                            <Typography variant="body2">
+                              {row.retentionCopies} {row.retentionCopies === 1 ? 'copy' : 'copies'}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Unlimited
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="Edit Schedule">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditSchedule(row)}
+                            >
+                              <Icon icon="mdi:pencil-outline" width={18} height={18} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Schedule">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => setDeleteScheduleTarget(row)}
+                            >
+                              <Icon icon="mdi:delete-outline" width={18} height={18} />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+
+        {/* Tab 2: Backup Storages */}
+        {activeTab === 2 && (
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">
               <TableHead>
@@ -359,17 +706,56 @@ export function BackupsPage() {
         )}
       </Box>
 
+      {/* Dialog: Create On-Demand Backup */}
+      <CreateOnDemandBackupDialog
+        open={isOnDemandOpen}
+        onClose={() => setIsOnDemandOpen(false)}
+        availableInstances={backupEligibleInstances}
+        backupStorages={backupStorages}
+      />
+
+      {/* Modal: Create or Edit Recurring Schedule */}
+      <CreateScheduleModal
+        open={isScheduleModalOpen}
+        mode={scheduleModalMode}
+        initialScheduleData={selectedScheduleData?.schedule}
+        selectedInstanceName={selectedScheduleData?.instanceName}
+        availableInstances={backupEligibleInstances}
+        availableBackupClasses={backupClasses || []}
+        backupStorages={backupStorages}
+        onSave={handleSaveSchedule}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          setSelectedScheduleData(null);
+        }}
+      />
+
+      {/* Dialog: Confirm Delete Schedule */}
+      <DeleteScheduleDialog
+        open={Boolean(deleteScheduleTarget)}
+        schedule={deleteScheduleTarget}
+        instance={
+          deleteScheduleTarget
+            ? instances.find(inst => inst.metadata.name === deleteScheduleTarget.instanceName) || null
+            : null
+        }
+        onClose={() => setDeleteScheduleTarget(null)}
+      />
+
+      {/* Dialog: Create Storage */}
       <CreateBackupStorageDialog
         open={isCreateStorageOpen}
         onClose={() => setIsCreateStorageOpen(false)}
       />
 
+      {/* Dialog: Delete Backup Snapshot */}
       <DeleteBackupDialog
         open={Boolean(deleteTarget)}
         backup={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
 
+      {/* Dialog: Delete Backup Storage */}
       <DeleteBackupStorageDialog
         open={Boolean(deleteStorageTarget)}
         storage={deleteStorageTarget}
