@@ -28,6 +28,7 @@ import {
   DAYS_OF_WEEK,
   flattenSchedules,
   FlattenedSchedule,
+  getCompatibleBackupClasses,
   HOURS,
   MINUTES,
   parseCronToState,
@@ -64,6 +65,15 @@ export function CreateScheduleModal({
   availableInstances,
   selectedInstanceName = '',
 }: CreateScheduleModalProps) {
+
+  const backupEligibleInstances = useMemo(() => {
+    if (!availableInstances) return [];
+    return availableInstances.filter(inst => {
+      if (inst.spec?.backup?.classRef?.name) return true;
+      return getCompatibleBackupClasses(availableBackupClasses, inst.providerName).length > 0;
+    });
+  }, [availableInstances, availableBackupClasses]);
+
   const [targetInstanceName, setTargetInstanceName] = useState(selectedInstanceName);
   const [name, setName] = useState('');
   const [backupClassName, setBackupClassName] = useState('');
@@ -83,10 +93,27 @@ export function CreateScheduleModal({
 
     setNameTouched(false);
 
-    if (selectedInstanceName) {
-      setTargetInstanceName(selectedInstanceName);
-    } else if (availableInstances && availableInstances.length > 0) {
-      setTargetInstanceName(availableInstances[0].metadata?.name || '');
+    // Initial instance selection
+    const initialInstance =
+      selectedInstanceName ||
+      (backupEligibleInstances.length > 0 ? backupEligibleInstances[0].metadata?.name : '') ||
+      '';
+    setTargetInstanceName(initialInstance);
+
+    const activeTargetInstance = backupEligibleInstances.find(
+      inst => inst.metadata.name === initialInstance
+    );
+    const instanceClassRef = activeTargetInstance?.spec?.backup?.classRef?.name;
+
+    if (instanceClassRef) {
+      setBackupClassName(instanceClassRef);
+    } else if (selectedBackupClassName) {
+      setBackupClassName(selectedBackupClassName);
+    } else if (availableBackupClasses.length > 0) {
+      const compatible = getCompatibleBackupClasses(availableBackupClasses, activeTargetInstance?.providerName);
+      setBackupClassName(compatible.length > 0 ? compatible[0].metadata.name : availableBackupClasses[0].metadata.name);
+    } else {
+      setBackupClassName('');
     }
 
     if (mode === 'edit' && initialScheduleData) {
@@ -118,26 +145,25 @@ export function CreateScheduleModal({
         setStorageName('');
       }
     }
+  }, [open, mode, initialScheduleData, selectedBackupClassName, availableBackupClasses, backupStorages, selectedInstanceName, backupEligibleInstances]);
 
-    const activeTargetInstance = availableInstances?.find(
-      inst => inst.metadata.name === (selectedInstanceName || targetInstanceName)
-    );
-    const instanceClassRef = activeTargetInstance?.spec?.backup?.classRef?.name;
-
-    if (instanceClassRef) {
-      setBackupClassName(instanceClassRef);
-    } else if (selectedBackupClassName) {
-      setBackupClassName(selectedBackupClassName);
+  const handleInstanceSelect = (newInstanceName: string) => {
+    setTargetInstanceName(newInstanceName);
+    const found = backupEligibleInstances.find(inst => inst.metadata.name === newInstanceName);
+    const instClassRef = found?.spec?.backup?.classRef?.name;
+    if (instClassRef) {
+      setBackupClassName(instClassRef);
     } else if (availableBackupClasses.length > 0) {
-      setBackupClassName(availableBackupClasses[0].metadata.name);
-    } else {
-      setBackupClassName('');
+      const compatible = getCompatibleBackupClasses(availableBackupClasses, found?.providerName);
+      if (compatible.length > 0) {
+        setBackupClassName(compatible[0].metadata.name);
+      }
     }
-  }, [open, mode, initialScheduleData, selectedBackupClassName, availableBackupClasses, backupStorages, availableInstances, selectedInstanceName, targetInstanceName]);
+  };
 
   const targetInstance = useMemo(() => {
-    return availableInstances?.find(inst => inst.metadata.name === targetInstanceName);
-  }, [availableInstances, targetInstanceName]);
+    return backupEligibleInstances.find(inst => inst.metadata.name === targetInstanceName);
+  }, [backupEligibleInstances, targetInstanceName]);
 
   const effectiveExistingSchedules = useMemo(() => {
     if (targetInstance) {
@@ -233,23 +259,16 @@ export function CreateScheduleModal({
           </Typography>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            {availableInstances && availableInstances.length > 0 && (
+            {backupEligibleInstances && backupEligibleInstances.length > 0 && (
               <FormControl fullWidth size="small" disabled={mode === 'edit'}>
                 <InputLabel id="database-instance-select-label">Database instance</InputLabel>
                 <Select
                   labelId="database-instance-select-label"
                   label="Database instance"
                   value={targetInstanceName}
-                  onChange={e => {
-                    const newInst = e.target.value;
-                    setTargetInstanceName(newInst);
-                    const found = availableInstances.find(inst => inst.metadata.name === newInst);
-                    if (found?.spec?.backup?.classRef?.name) {
-                      setBackupClassName(found.spec.backup.classRef.name);
-                    }
-                  }}
+                  onChange={e => handleInstanceSelect(e.target.value)}
                 >
-                  {availableInstances.map(inst => (
+                  {backupEligibleInstances.map(inst => (
                     <MenuItem key={inst.metadata.name} value={inst.metadata.name}>
                       {inst.metadata.name} {inst.providerName ? `(${inst.providerName})` : ''}
                     </MenuItem>
