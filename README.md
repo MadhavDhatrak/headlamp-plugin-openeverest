@@ -1,6 +1,7 @@
 # Headlamp Plugin for OpenEverest V2
 
-> ⚠️ **Project Status: Active MVP Development**  
+> [!WARNING]
+> **Project Status: Active MVP Development**
 > This plugin is currently in active MVP (Minimum Viable Product) development for OpenEverest V2. Features, APIs, and interfaces are actively evolving. Feedback and contributions are very welcome!
 
 ---
