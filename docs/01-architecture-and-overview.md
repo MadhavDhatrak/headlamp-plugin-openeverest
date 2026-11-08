@@ -84,7 +84,7 @@ The plugin uses a **dual communication model** with the Kubernetes API server, r
 A simplified view of how the plugin source is organized:
 
 ```text
-headlamp-openeverest/
+headlamp-plugin-openeverest/
 ├── src/
 │   ├── index.tsx         Entry point (registers routes and sidebar menus)
 │   ├── pages/            Full views (Extensions, Databases, Backups, Create Wizard)
