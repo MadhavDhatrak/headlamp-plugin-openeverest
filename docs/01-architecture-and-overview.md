@@ -50,40 +50,13 @@ The plugin uses a **dual communication model** with the Kubernetes API server, r
    - **DELETE:** Deletes database instances when requested.
 
 ### Communication Diagram
-```
-+-------------------------------------------------------------------------+
-|                              HEADLAMP UI                                |
-|                                                                         |
-|  [ Extensions (Hub) ]      [ Databases Wizard ]      [ Backups] |
-+------------------------------------+------------------------------------+
-                                     |
-                      Headlamp SDK (@kinvolk/headlamp-plugin)
-                                     |
-                                     v
-+-------------------------------------------------------------------------+
-|                         HEADLAMP BACKEND PROXY                          |
-|             (Handles Cluster Auth, Kubeconfig, and Token Relay)         |
-+--------------------+-------------------------------+--------------------+
-                     |                               |
-       (1) Live Watches (WebSockets)    (2) Mutations (POST / PATCH / DELETE)
-                     |                               |
-                     v                               v
-+-------------------------------------------------------------------------+
-|                          KUBERNETES API SERVER                          |
-|                                                                         |
-|    core.openeverest.io/v1alpha1        backup.openeverest.io/v1alpha1   |
-|    - Provider                          - Backup                         |
-|    - Instance                          - BackupStorage                  |
-|                                        - BackupClass                    |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+-------------------------------------------------------------------------+
-|                       OPENEVEREST OPERATORS                             |
-|          (Reconciles pods, PVCs, services, and backup jobs)             |
-+-------------------------------------------------------------------------+
-```
+<img
+  width="800"
+  alt="Communication Diagram"
+  src="https://github.com/user-attachments/assets/92c2a49c-35de-4f47-b0e8-6fe41be890d6"
+/>
 
+---
 ### Custom Resources Used
 
 | API group | Resources |
