@@ -21,36 +21,7 @@ import { DatabaseListPage } from './pages/DatabaseListPage';
 import { ExtensionDetailPage } from './pages/ExtensionDetailPage';
 import { ProvidersPage } from './pages/ProvidersPage';
 
-
-
-// Register Extensions submenu
-registerSidebarEntry({
-  parent: 'openeverest',
-  name: 'openeverest-providers',
-  label: 'Extensions',
-  icon: 'mdi:view-grid-outline',
-  url: '/openeverest/providers',
-});
-
-// Register Catalog Page route
-registerRoute({
-  path: '/openeverest/providers',
-  sidebar: 'openeverest-providers',
-  component: () => <ProvidersPage />,
-  exact: true,
-  name: 'openeverest-providers',
-});
-
-// Register Extension Detail Page route
-registerRoute({
-  path: '/openeverest/providers/:name',
-  sidebar: 'openeverest-providers',
-  component: () => <ExtensionDetailPage />,
-  exact: true,
-  name: 'openeverest-provider-detail',
-});
-
-// Register OpenEverest main sidebar entry
+// 1. Register OpenEverest main sidebar parent entry
 registerSidebarEntry({
   parent: null,
   name: 'openeverest',
@@ -59,7 +30,7 @@ registerSidebarEntry({
   url: '/openeverest/databases',
 });
 
-// Register Databases submenu
+// 2. Register Databases submenu & routes
 registerSidebarEntry({
   parent: 'openeverest',
   name: 'openeverest-databases',
@@ -68,7 +39,6 @@ registerSidebarEntry({
   url: '/openeverest/databases',
 });
 
-// Register Databases Page route
 registerRoute({
   path: '/openeverest/databases',
   sidebar: 'openeverest-databases',
@@ -85,6 +55,32 @@ registerRoute({
   name: 'openeverest-create-database',
 });
 
+// 3. Register Extensions submenu & routes
+registerSidebarEntry({
+  parent: 'openeverest',
+  name: 'openeverest-providers',
+  label: 'Extensions',
+  icon: 'mdi:view-grid-outline',
+  url: '/openeverest/providers',
+});
+
+registerRoute({
+  path: '/openeverest/providers',
+  sidebar: 'openeverest-providers',
+  component: () => <ProvidersPage />,
+  exact: true,
+  name: 'openeverest-providers',
+});
+
+registerRoute({
+  path: '/openeverest/providers/:name',
+  sidebar: 'openeverest-providers',
+  component: () => <ExtensionDetailPage />,
+  exact: true,
+  name: 'openeverest-provider-detail',
+});
+
+// 4. Register Backups submenu & routes
 registerSidebarEntry({
   parent: 'openeverest',
   name: 'openeverest-backups',
