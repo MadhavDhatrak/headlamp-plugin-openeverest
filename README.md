@@ -101,7 +101,7 @@ Create a symbolic link from the Headlamp plugins directory to this folder (or co
 | :--- | :--- |
 | **Linux** | `~/.config/Headlamp/plugins/` |
 | **macOS** | `~/Library/Application Support/Headlamp/plugins/` |
-| **Windows** | `%APPDATA%\Headlamp\plugins\` |
+| **Windows** | `%APPDATA%\Headlamp\Config\plugins\` |
 
 **Linux / macOS:**
 
@@ -114,7 +114,8 @@ ln -s "$(pwd)" ~/.config/Headlamp/plugins/headlamp-openeverest
 **Windows (PowerShell as Administrator):**
 
 ```powershell
-New-Item -ItemType SymbolicLink -Path "$env:APPDATA\Headlamp\plugins\headlamp-openeverest" -Target (Get-Location)
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins"
+New-Item -ItemType SymbolicLink -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest" -Target (Get-Location)
 ```
 
 ### 3. Build & run

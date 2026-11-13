@@ -55,7 +55,7 @@ Headlamp Desktop discovers plugins from its local plugins directory:
 | --- | --- |
 | **Linux** | `~/.config/Headlamp/plugins/` |
 | **macOS** | `~/Library/Application Support/Headlamp/plugins/` |
-| **Windows** | `%APPDATA%\Headlamp\plugins\` |
+| **Windows** | `%APPDATA%\Headlamp\Config\plugins\` |
 
 Create a symbolic link from that directory to your repo folder.
 
@@ -69,21 +69,21 @@ Create a symbolic link from that directory to your repo folder.
 mkdir -p ~/.config/Headlamp/plugins
 
 # Create the symlink (on macOS, use the macOS path from the table above)
-ln -s "$(pwd)" ~/.config/Headlamp/plugins/headlamp-plugin-openeverest
+ln -s "$(pwd)" ~/.config/Headlamp/plugins/headlamp-openeverest
 ```
 
 **Windows (PowerShell as Administrator):**
 
 ```powershell
 # Create the plugins directory if it doesn't exist
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\plugins"
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins"
 
 # Create the symlink to this repo directory
-New-Item -ItemType SymbolicLink -Path "$env:APPDATA\Headlamp\plugins\headlamp-plugin-openeverest" -Target (Get-Location)
+New-Item -ItemType SymbolicLink -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest" -Target (Get-Location)
 ```
 
 > [!TIP]
-> If you can't create a symlink, build first with `npm run build`, then copy `dist/` and `package.json` into the plugins directory under a `headlamp-plugin-openeverest` folder.
+> If you can't create a symlink, build first with `npm run build`, then copy `dist/` and `package.json` into the plugins directory under a `headlamp-openeverest` folder. Notice that `npm run start` will also automatically synchronize changes to `%APPDATA%\Headlamp\Config\plugins\headlamp-openeverest\`.
 
 ### Step 3: Start the build watcher
 
