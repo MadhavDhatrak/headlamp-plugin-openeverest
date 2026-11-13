@@ -27,11 +27,21 @@ Before developing locally, make sure you have:
 | **Node.js** | v18 or later |
 | **npm** | v9 or later |
 | **Kubernetes cluster** | v1.28+, local (`k3s`, `minikube`, `kind`) or cloud-managed |
-| **OpenEverest V2** | Installed on the cluster via Helm (`openeverest/openeverest --version "2.0.0-dev.4"`) |
+| **OpenEverest V2** | Installed on the cluster via Helm (see below) |
 | **Headlamp Desktop** | The official [Headlamp Desktop](https://headlamp.dev/docs/latest/installation/) application |
 
+Install OpenEverest V2 on your cluster:
+
+```bash
+helm repo add openeverest https://openeverest.github.io/helm-charts/
+helm repo update
+helm install everest-core openeverest/openeverest \
+  --devel --version "2.0.0-dev.4" \
+  --namespace everest-system --create-namespace
+```
+
 > [!IMPORTANT]
-> Currently, **only Headlamp Desktop is supported**. Support for in-cluster Headlamp is planned for a future release.
+> Currently, **only Headlamp Desktop is supported**. Support for in-cluster Headlamp is planned for later.
 
 ---
 
@@ -57,15 +67,13 @@ Headlamp Desktop discovers plugins from its local plugins directory:
 | **macOS** | `~/Library/Application Support/Headlamp/plugins/` |
 | **Windows** | `%APPDATA%\Headlamp\Config\plugins\` |
 
-Create a symbolic link from that directory to your repo folder.
-
-> [!NOTE]
-> Link the plugin **before** starting the build watcher so changes are reflected immediately.
+Create a symbolic link from that directory to the plugin folder. Do this **before** starting the build watcher so changes are reflected immediately.
 
 **Linux / macOS:**
 
 ```bash
 # Create the plugins directory if it doesn't exist
+# (on macOS, use the macOS path from the table above)
 mkdir -p ~/.config/Headlamp/plugins
 
 # Create the symlink (on macOS, use the macOS path from the table above)
@@ -109,9 +117,14 @@ npm run build
 
 ## 3. Project Architecture & Documentation
 
-Please read the architecture guide before writing code:
+Before writing code, read the guide for the area you are working on:
 
-- 📖 **[Architecture & Overview Guide](./docs/01-architecture-and-overview.md)**: covers the dual communication model (WebSocket watches vs. REST mutations), Headlamp SDK integration, the tech stack, and the current MVP scope.
+| Guide | Covers |
+| --- | --- |
+|  [**01 Architecture & Overview**](./docs/01-architecture-and-overview.md) | Dual communication model (WebSocket watches vs. REST mutations), Headlamp SDK integration, and tech stack. |
+|  [**02 Extensions & Providers**](./docs/02-extensions-and-providers.md) | Hub catalog syncing, `Provider` CRDs, and Helm commands. |
+|  [**03 Databases & Dynamic UI**](./docs/03-databases-and-dynamic-ui.md) | Database instance lifecycle, the dynamic `uiSchema` form engine, and modular widgets. |
+|  [**04 Backups & Schedules**](./docs/04-backups-and-schedules.md) | `BackupClass` compatibility, snapshots, and atomic RFC 7386 JSON Merge Patching for schedules. |
 
 ---
 
@@ -133,7 +146,7 @@ To help us review and merge your work quickly, please follow this workflow.
    npm run build
    ```
 
-3. **Commit and push.** We use [Conventional Commits](https://www.conventionalcommits.org/) in the form `type(scope): message`:
+3. **Commit and push.** We use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) in the form `type(scope): message`:
 
    ```bash
    git commit -m "feat(instances): add backup status column"
@@ -145,7 +158,6 @@ To help us review and merge your work quickly, please follow this workflow.
 4. **Open a PR.** Describe what changed and why, and include screenshots for any UI changes.
 
 ---
-
 
 ## 5. Questions & Discussions
 
