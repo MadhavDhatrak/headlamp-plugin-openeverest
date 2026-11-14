@@ -371,8 +371,9 @@ export function CreateDatabasePage() {
                           ? currentSection.componentsOrder
                           : Object.keys(currentSection.components || {})
                         ).map(compKey => {
-                          const node = currentSection.components?.[compKey];
-                          if (!node) return null;
+                          const rawNode = currentSection.components?.[compKey];
+                          if (!rawNode) return null;
+                          const node = rawNode.id ? rawNode : { ...rawNode, id: compKey };
                           return (
                             <WidgetRenderer
                               key={node.path || node.id || compKey}

@@ -61,8 +61,9 @@ export function flattenComponents(components: Record<string, UiComponentNode> = 
   const result: UiComponentNode[] = [];
 
   for (const key of Object.keys(components)) {
-    const node = components[key];
-    if (!node) continue;
+    const rawNode = components[key];
+    if (!rawNode) continue;
+    const node = rawNode.id ? rawNode : { ...rawNode, id: key };
 
     if (node.components) {
       result.push(...flattenComponents(node.components));

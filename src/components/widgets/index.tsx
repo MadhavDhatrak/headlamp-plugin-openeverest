@@ -2,6 +2,7 @@ import React from 'react';
 import { SelectOption, UiComponentNode } from '../../schema/uiSchema';
 import { GroupWidget } from './GroupWidget';
 import { NumberWidget } from './NumberWidget';
+import { PodSchedulingPolicyWidget } from './PodSchedulingPolicyWidget';
 import { SelectWidget } from './SelectWidget';
 import { TextWidget } from './TextWidget';
 import { ToggleWidget } from './ToggleWidget';
@@ -74,6 +75,9 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
       return (
         <GroupWidget
           node={node}
+          values={values}
+          onChange={onChange}
+          disabled={disabled}
           renderWidget={childNode => (
             <WidgetRenderer
               node={childNode}
@@ -86,6 +90,26 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
           )}
         />
       );
+    case 'podSchedulingPolicy':
+    case 'widget':
+      if (
+        node.widgetType === 'podSchedulingPolicy' ||
+        node.uiType === 'podSchedulingPolicy' ||
+        node.id === 'policy' ||
+        node.id === 'podSchedulingPolicy'
+      ) {
+        return (
+          <PodSchedulingPolicyWidget
+            node={node}
+            value={value}
+            values={values}
+            onChange={onChange}
+            disabled={disabled}
+            error={error}
+          />
+        );
+      }
+      return <UnknownWidgetFallback node={node} />;
     default:
       return <UnknownWidgetFallback node={node} />;
   }
@@ -93,6 +117,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
 
 export * from './GroupWidget';
 export * from './NumberWidget';
+export * from './PodSchedulingPolicyWidget';
 export * from './SelectWidget';
 export * from './TextWidget';
 export * from './ToggleWidget';
