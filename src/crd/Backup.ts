@@ -37,7 +37,7 @@ export interface BackupSpec {
   scheduleName?: string;
 }
 
-export type BackupState = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | string;
+export type BackupState = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Deleting' | string;
 
 export interface BackupStatusCondition {
   type: string;
@@ -85,7 +85,14 @@ export class Backup extends KubeObject<BackupInterface> {
     return this.jsonData.status;
   }
 
+  get isDeleting(): boolean {
+    return Boolean(this.metadata?.deletionTimestamp);
+  }
+
   get state(): BackupState {
+    if (this.isDeleting) {
+      return 'Deleting';
+    }
     return this.status?.state ?? 'Pending';
   }
 

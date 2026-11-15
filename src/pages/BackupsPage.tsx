@@ -513,14 +513,21 @@ export function BackupsPage() {
                       <TableCell>{backup.backupSize}</TableCell>
                       <TableCell>{formatAge(backup.metadata.creationTimestamp)}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title="Delete Backup">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => setDeleteTarget(backup)}
-                          >
-                            <Icon icon="mdi:delete-outline" width={18} height={18} />
-                          </IconButton>
+                        <Tooltip title={backup.isDeleting ? 'Backup is deleting...' : 'Delete Backup'}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              disabled={backup.isDeleting}
+                              onClick={() => setDeleteTarget(backup)}
+                            >
+                              {backup.isDeleting ? (
+                                <CircularProgress size={16} color="inherit" />
+                              ) : (
+                                <Icon icon="mdi:delete-outline" width={18} height={18} />
+                              )}
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </TableCell>
                     </TableRow>

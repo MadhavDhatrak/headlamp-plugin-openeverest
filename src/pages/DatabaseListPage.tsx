@@ -224,14 +224,21 @@ export function DatabaseListPage() {
                   </TableCell>
                   <TableCell>{formatAge(inst.metadata.creationTimestamp)}</TableCell>
                   <TableCell align="right">
-                    <Tooltip title="Delete database">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => setDeleteTarget(inst)}
-                      >
-                        <Icon icon="mdi:delete-outline" width={18} height={18} />
-                      </IconButton>
+                    <Tooltip title={inst.isDeleting ? 'Database is terminating...' : 'Delete database'}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={inst.isDeleting}
+                          onClick={() => setDeleteTarget(inst)}
+                        >
+                          {inst.isDeleting ? (
+                            <CircularProgress size={16} color="inherit" />
+                          ) : (
+                            <Icon icon="mdi:delete-outline" width={18} height={18} />
+                          )}
+                        </IconButton>
+                      </span>
                     </Tooltip>
                   </TableCell>
                 </TableRow>
