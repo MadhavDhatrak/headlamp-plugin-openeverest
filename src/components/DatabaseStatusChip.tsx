@@ -39,8 +39,8 @@ export function DatabaseStatusChip({ phase = 'Pending' }: DatabaseStatusChipProp
       break;
 
     case 'Terminating':
-      color = 'error';
-      icon = <Icon icon="mdi:delete-clock" width={16} height={16} />;
+      color = 'warning';
+      icon = <CircularProgress size={12} color="inherit" thickness={5} />;
       break;
 
     default:

@@ -219,7 +219,14 @@ export class Instance extends KubeObject<InstanceInterface> {
     return this.jsonData.status;
   }
 
+  get isDeleting(): boolean {
+    return Boolean(this.metadata?.deletionTimestamp);
+  }
+
   get phase(): InstancePhase {
+    if (this.isDeleting) {
+      return 'Terminating';
+    }
     return this.status?.phase ?? 'Pending';
   }
 

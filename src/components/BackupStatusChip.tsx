@@ -28,6 +28,11 @@ export function BackupStatusChip({ state = 'Pending', message }: BackupStatusChi
       icon = <Icon icon="mdi:clock-outline" width={16} height={16} />;
       break;
 
+    case 'Deleting':
+      color = 'warning';
+      icon = <CircularProgress size={12} color="inherit" thickness={5} />;
+      break;
+
     case 'Failed':
       color = 'error';
       icon = <Icon icon="mdi:alert-circle" width={16} height={16} />;
