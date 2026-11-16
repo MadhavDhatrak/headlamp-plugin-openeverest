@@ -58,7 +58,7 @@ export const GroupWidget: React.FC<GroupWidgetProps> = ({
     if (onChange) {
       onChange(fieldKey, nextChecked);
       if (!nextChecked) {
-        ['engine', 'monitoring', 'proxy'].forEach(comp => {
+        ['engine', 'proxy'].forEach(comp => {
           onChange(`spec.components.${comp}.schedulingPolicy`, undefined);
         });
         order.forEach(key => {
