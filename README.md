@@ -95,27 +95,34 @@ npm install
 
 ### 2. Link the plugin into Headlamp
 
-Create a symbolic link from the Headlamp plugins directory to this folder (or copy the folder there).
+Link Headlamp's `user-plugins` directory to the `plugins` build output so Headlamp automatically loads live builds:
 
-| OS | Plugins directory |
-| :--- | :--- |
-| **Linux** | `~/.config/Headlamp/plugins/` |
-| **macOS** | `~/Library/Application Support/Headlamp/plugins/` |
-| **Windows** | `%APPDATA%\Headlamp\Config\plugins\` |
+| OS | Auto-loaded user plugins path | Development build output path |
+| :--- | :--- | :--- |
+| **Linux** | `~/.config/Headlamp/user-plugins/` | `~/.config/Headlamp/plugins/` |
+| **macOS** | `~/Library/Application Support/Headlamp/user-plugins/` | `~/Library/Application Support/Headlamp/plugins/` |
+| **Windows** | `%APPDATA%\Headlamp\Config\user-plugins\` | `%APPDATA%\Headlamp\Config\plugins\` |
 
 **Linux / macOS:**
 
 ```bash
-# Use the macOS path from the table above on macOS
-mkdir -p ~/.config/Headlamp/plugins
-ln -s "$(pwd)" ~/.config/Headlamp/plugins/headlamp-plugin-openeverest
+# Ensure directories exist (use macOS paths above if on macOS)
+mkdir -p ~/.config/Headlamp/plugins/headlamp-openeverest
+mkdir -p ~/.config/Headlamp/user-plugins
+
+# Link user-plugins to plugins
+ln -s ~/.config/Headlamp/plugins/headlamp-openeverest ~/.config/Headlamp/user-plugins/headlamp-openeverest
 ```
 
-**Windows (PowerShell as Administrator):**
+**Windows (PowerShell):**
 
 ```powershell
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins"
-New-Item -ItemType SymbolicLink -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest" -Target (Get-Location)
+# Ensure directories exist
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\user-plugins"
+
+# Link user-plugins to plugins so Headlamp auto-loads live builds
+New-Item -ItemType Junction -Path "$env:APPDATA\Headlamp\Config\user-plugins\headlamp-openeverest" -Target "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
 ```
 
 ### 3. Build & run
