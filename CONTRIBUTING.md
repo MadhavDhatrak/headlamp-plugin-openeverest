@@ -59,39 +59,40 @@ npm install
 
 ### Step 2: Link the plugin to Headlamp Desktop
 
-Headlamp Desktop discovers plugins from its local plugins directory:
+Link Headlamp's `user-plugins` directory to the `plugins` build output so Headlamp automatically loads live builds without security prompts:
 
-| OS | Plugins directory |
-| --- | --- |
-| **Linux** | `~/.config/Headlamp/plugins/` |
-| **macOS** | `~/Library/Application Support/Headlamp/plugins/` |
-| **Windows** | `%APPDATA%\Headlamp\Config\plugins\` |
+| OS | Auto-loaded user plugins path | Development build output path |
+| --- | --- | --- |
+| **Linux** | `~/.config/Headlamp/user-plugins/` | `~/.config/Headlamp/plugins/` |
+| **macOS** | `~/Library/Application Support/Headlamp/user-plugins/` | `~/Library/Application Support/Headlamp/plugins/` |
+| **Windows** | `%APPDATA%\Headlamp\Config\user-plugins\` | `%APPDATA%\Headlamp\Config\plugins\` |
 
-Create a symbolic link from that directory to the plugin folder. Do this **before** starting the build watcher so changes are reflected immediately.
+Do this **before** starting the build watcher so changes are reflected immediately.
 
 **Linux / macOS:**
 
 ```bash
-# Create the plugins directory if it doesn't exist
-# (on macOS, use the macOS path from the table above)
-mkdir -p ~/.config/Headlamp/plugins
+# Ensure directories exist (use macOS paths above if on macOS)
+mkdir -p ~/.config/Headlamp/plugins/headlamp-openeverest
+mkdir -p ~/.config/Headlamp/user-plugins
 
-# Create the symlink (on macOS, use the macOS path from the table above)
-ln -s "$(pwd)" ~/.config/Headlamp/plugins/headlamp-openeverest
+# Link user-plugins to plugins
+ln -s ~/.config/Headlamp/plugins/headlamp-openeverest ~/.config/Headlamp/user-plugins/headlamp-openeverest
 ```
 
-**Windows (PowerShell as Administrator):**
+**Windows (PowerShell):**
 
 ```powershell
-# Create the plugins directory if it doesn't exist
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins"
+# Ensure directories exist
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\user-plugins"
 
-# Create the symlink to this repo directory
-New-Item -ItemType SymbolicLink -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest" -Target (Get-Location)
+# Link user-plugins to plugins so Headlamp auto-loads live builds (no Administrator privileges required)
+New-Item -ItemType Junction -Path "$env:APPDATA\Headlamp\Config\user-plugins\headlamp-openeverest" -Target "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
 ```
 
 > [!TIP]
-> If you can't create a symlink, build first with `npm run build`, then copy `dist/` and `package.json` into the plugins directory under a `headlamp-openeverest` folder. Notice that `npm run start` will also automatically synchronize changes to `%APPDATA%\Headlamp\Config\plugins\headlamp-openeverest\`.
+> If you cannot create a link, build first with `npm run build`, then copy `dist/` and `package.json` into the `user-plugins` directory under a `headlamp-openeverest` folder.
 
 ### Step 3: Start the build watcher
 
