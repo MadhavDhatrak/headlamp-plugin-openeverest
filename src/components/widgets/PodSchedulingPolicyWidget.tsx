@@ -202,11 +202,10 @@ export const PodSchedulingPolicyWidget: React.FC<PodSchedulingPolicyWidgetProps>
   onChange,
   disabled = false,
 }) => {
-  const comps = ['engine', 'monitoring', 'proxy'];
+  const comps = ['engine', 'proxy'];
   const [activeTab, setActiveTab] = useState<string>('engine');
   const [rules, setRules] = useState<Record<string, RuleGroup[]>>(() => ({
     engine: fromK8sAffinity(values?.['spec.components.engine.schedulingPolicy']?.affinity),
-    monitoring: fromK8sAffinity(values?.['spec.components.monitoring.schedulingPolicy']?.affinity),
     proxy: fromK8sAffinity(values?.['spec.components.proxy.schedulingPolicy']?.affinity),
   }));
 
