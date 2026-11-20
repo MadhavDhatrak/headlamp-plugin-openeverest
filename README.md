@@ -93,52 +93,21 @@ cd headlamp-plugin-openeverest
 npm install
 ```
 
-### 2. Link the plugin into Headlamp
+### 2. Build and Deploy to Headlamp
 
-Link Headlamp's `user-plugins` directory to the `plugins` build output so Headlamp automatically loads live builds:
-
-| OS | Auto-loaded user plugins path | Development build output path |
-| :--- | :--- | :--- |
-| **Linux** | `~/.config/Headlamp/user-plugins/` | `~/.config/Headlamp/plugins/` |
-| **macOS** | `~/Library/Application Support/Headlamp/user-plugins/` | `~/Library/Application Support/Headlamp/plugins/` |
-| **Windows** | `%APPDATA%\Headlamp\Config\user-plugins\` | `%APPDATA%\Headlamp\Config\plugins\` |
-
-**Linux / macOS:**
+When you make changes to the code, run:
 
 ```bash
-# Ensure directories exist (use macOS paths above if on macOS)
-mkdir -p ~/.config/Headlamp/plugins/headlamp-openeverest
-mkdir -p ~/.config/Headlamp/user-plugins
-
-# Link user-plugins to plugins
-ln -s ~/.config/Headlamp/plugins/headlamp-openeverest ~/.config/Headlamp/user-plugins/headlamp-openeverest
+npm start
 ```
 
-**Windows (PowerShell):**
+This command automatically:
+1. Compiles the TypeScript plugin into `dist/`.
+2. Copies `dist/` and `package.json` into Headlamp's `user-plugins` directory for your OS:
+   - **Windows:** `%APPDATA%\Headlamp\Config\user-plugins\headlamp-openeverest`
+   - **macOS:** `~/Library/Application Support/Headlamp/user-plugins/headlamp-openeverest`
+   - **Linux:** `~/.config/Headlamp/user-plugins/headlamp-openeverest`
 
-```powershell
-# Ensure directories exist
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\user-plugins"
-
-# Link user-plugins to plugins so Headlamp auto-loads live builds
-New-Item -ItemType Junction -Path "$env:APPDATA\Headlamp\Config\user-plugins\headlamp-openeverest" -Target "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
-```
-
-### 3. Build & run
-
-```bash
-# Development mode with hot rebuild
-npm run start
-
-# Production build
-npm run build
-```
-
-Then launch Headlamp Desktop. **OpenEverest** will appear in the sidebar.
-
-> [!TIP]
-> While `npm run start` is running, press **`Ctrl + R`** (Windows/Linux) or **`Cmd + R`** (macOS) inside Headlamp to reload and see your latest changes.
 
 ---
 

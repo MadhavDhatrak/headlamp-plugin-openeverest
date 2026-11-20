@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Your Headlamp plugin",
   "scripts": {
-    "start": "headlamp-plugin start",
+    "start": "headlamp-plugin build && node scripts/sync.mjs",
     "build": "headlamp-plugin build",
     "format": "headlamp-plugin format",
     "lint": "headlamp-plugin lint",
