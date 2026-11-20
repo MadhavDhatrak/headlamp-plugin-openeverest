@@ -57,62 +57,25 @@ cd headlamp-plugin-openeverest
 npm install
 ```
 
-### Step 2: Link the plugin to Headlamp Desktop
+### Step 2: Build and deploy to Headlamp
 
-Link Headlamp's `user-plugins` directory to the `plugins` build output so Headlamp automatically loads live builds without security prompts:
-
-| OS | Auto-loaded user plugins path | Development build output path |
-| --- | --- | --- |
-| **Linux** | `~/.config/Headlamp/user-plugins/` | `~/.config/Headlamp/plugins/` |
-| **macOS** | `~/Library/Application Support/Headlamp/user-plugins/` | `~/Library/Application Support/Headlamp/plugins/` |
-| **Windows** | `%APPDATA%\Headlamp\Config\user-plugins\` | `%APPDATA%\Headlamp\Config\plugins\` |
-
-Do this **before** starting the build watcher so changes are reflected immediately.
-
-**Linux / macOS:**
+Whenever you make changes to the code, run:
 
 ```bash
-# Ensure directories exist (use macOS paths above if on macOS)
-mkdir -p ~/.config/Headlamp/plugins/headlamp-openeverest
-mkdir -p ~/.config/Headlamp/user-plugins
-
-# Link user-plugins to plugins
-ln -s ~/.config/Headlamp/plugins/headlamp-openeverest ~/.config/Headlamp/user-plugins/headlamp-openeverest
+npm start
 ```
 
-**Windows (PowerShell):**
+This command:
+1. Compiles your TypeScript changes using `headlamp-plugin build`.
+2. Copies `dist/` and `package.json` into Headlamp's `user-plugins` directory for your OS:
+   - **Windows:** `%APPDATA%\Headlamp\Config\user-plugins\headlamp-openeverest`
+   - **macOS:** `~/Library/Application Support/Headlamp/user-plugins/headlamp-openeverest`
+   - **Linux:** `~/.config/Headlamp/user-plugins/headlamp-openeverest`
 
-```powershell
-# Ensure directories exist
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Headlamp\Config\user-plugins"
-
-# Link user-plugins to plugins so Headlamp auto-loads live builds (no Administrator privileges required)
-New-Item -ItemType Junction -Path "$env:APPDATA\Headlamp\Config\user-plugins\headlamp-openeverest" -Target "$env:APPDATA\Headlamp\Config\plugins\headlamp-openeverest"
-```
-
-> [!TIP]
-> If you cannot create a link, build first with `npm run build`, then copy `dist/` and `package.json` into the `user-plugins` directory under a `headlamp-openeverest` folder.
-
-### Step 3: Start the build watcher
-
-```bash
-npm run start
-```
-
-This compiles the TypeScript files and watches for changes, updating `dist/main.js` every time you save.
-
-### Step 4: Launch Headlamp and live-reload
+### Step 3: Launch Headlamp and view changes
 
 1. Launch **Headlamp Desktop**.
 2. Look for **OpenEverest** in the sidebar.
-3. After `npm run start` finishes recompiling, press **`Ctrl + R`** (Windows/Linux) or **`Cmd + R`** (macOS) inside Headlamp to reload the window and see your changes.
-
-For a one-time production build without watching:
-
-```bash
-npm run build
-```
 
 ---
 
