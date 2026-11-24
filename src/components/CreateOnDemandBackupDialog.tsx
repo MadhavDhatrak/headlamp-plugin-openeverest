@@ -17,8 +17,10 @@ import {
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Backup } from '../crd/Backup';
+import { BackupClass } from '../crd/BackupClass';
 import { BackupStorage } from '../crd/BackupStorage';
 import { Instance } from '../crd/Instance';
+import { getCompatibleBackupClasses } from '../utils/backupSchedules';
 
 export interface CreateOnDemandBackupDialogProps {
   open: boolean;
@@ -26,6 +28,7 @@ export interface CreateOnDemandBackupDialogProps {
   availableInstances: Instance[];
   selectedInstanceName?: string;
   backupStorages: BackupStorage[];
+  availableBackupClasses?: BackupClass[];
   onCreated?: (backupName: string) => void;
 }
 
@@ -40,11 +43,16 @@ export function CreateOnDemandBackupDialog({
   availableInstances = [],
   selectedInstanceName = '',
   backupStorages = [],
+  availableBackupClasses,
   onCreated,
 }: CreateOnDemandBackupDialogProps) {
+  const [fetchedBackupClasses] = BackupClass.useList();
+  const backupClasses = availableBackupClasses || fetchedBackupClasses || [];
+
   const [instanceName, setInstanceName] = useState('');
   const [name, setName] = useState('');
   const [storageName, setStorageName] = useState('');
+  const [backupClassName, setBackupClassName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,25 +61,20 @@ export function CreateOnDemandBackupDialog({
     return availableInstances.find(inst => inst.metadata.name === instanceName);
   }, [availableInstances, instanceName]);
 
-  // When dialog opens, initialize form state
-  useEffect(() => {
-    if (!open) return;
+  const compatibleBackupClasses = useMemo(() => {
+    return getCompatibleBackupClasses(backupClasses, selectedInstance?.providerName);
+  }, [backupClasses, selectedInstance?.providerName]);
 
-    setError(null);
-    setNameTouched(false);
-    setIsSubmitting(false);
+  const selectInstance = (inst: Instance | undefined | null) => {
+    const instName = inst?.metadata?.name || '';
+    setInstanceName(instName);
+    setName(generateBackupName(instName));
 
-    const instanceObj =
-      (selectedInstanceName
-        ? availableInstances.find(inst => inst.metadata?.name === selectedInstanceName)
-        : availableInstances[0]) || null;
+    const instanceClass = inst?.spec?.backup?.classRef?.name;
+    const compatible = getCompatibleBackupClasses(backupClasses, inst?.providerName);
+    setBackupClassName(instanceClass || compatible[0]?.metadata?.name || '');
 
-    const initialInstance = instanceObj?.metadata?.name || '';
-    setInstanceName(initialInstance);
-    setName(generateBackupName(initialInstance));
-
-    const configuredStorage = instanceObj?.spec?.backup?.storages?.[0]?.storageRef?.name;
-
+    const configuredStorage = inst?.spec?.backup?.storages?.[0]?.storageRef?.name;
     if (configuredStorage && backupStorages.some(s => s.metadata.name === configuredStorage)) {
       setStorageName(configuredStorage);
     } else if (backupStorages.length > 0) {
@@ -79,18 +82,26 @@ export function CreateOnDemandBackupDialog({
     } else {
       setStorageName('');
     }
-  }, [open, selectedInstanceName, availableInstances, backupStorages]);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    setError(null);
+    setNameTouched(false);
+    setIsSubmitting(false);
+
+    const initial =
+      (selectedInstanceName
+        ? availableInstances.find(inst => inst.metadata?.name === selectedInstanceName)
+        : availableInstances[0]) || null;
+
+    selectInstance(initial);
+  }, [open, selectedInstanceName, availableInstances, backupStorages, backupClasses]);
 
   const handleInstanceChange = (newInstanceName: string) => {
-    setInstanceName(newInstanceName);
-    setName(generateBackupName(newInstanceName));
-
-    const instanceObj = availableInstances.find(inst => inst.metadata.name === newInstanceName);
-    const configuredStorage = instanceObj?.spec?.backup?.storages?.[0]?.storageRef?.name;
-
-    if (configuredStorage && backupStorages.some(s => s.metadata.name === configuredStorage)) {
-      setStorageName(configuredStorage);
-    }
+    const inst = availableInstances.find(i => i.metadata.name === newInstanceName);
+    selectInstance(inst);
   };
 
   const nameError = useMemo(() => {
@@ -110,7 +121,16 @@ export function CreateOnDemandBackupDialog({
     return null;
   }, [storageName]);
 
-  const isValid = !nameError && !storageError && name.trim().length > 0 && Boolean(instanceName);
+  const classError = useMemo(() => {
+    if (!backupClassName) {
+      return selectedInstance?.providerName
+        ? `No compatible BackupClass found for provider "${selectedInstance.providerName}"`
+        : 'Please select a database instance with a valid BackupClass';
+    }
+    return null;
+  }, [backupClassName, selectedInstance?.providerName]);
+
+  const isValid = !nameError && !storageError && !classError && Boolean(backupClassName) && name.trim().length > 0 && Boolean(instanceName);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +141,39 @@ export function CreateOnDemandBackupDialog({
     setError(null);
 
     const targetNamespace = selectedInstance?.metadata?.namespace || 'default';
-    const backupClassName = selectedInstance?.spec?.backup?.classRef?.name;
+
+    if (!backupClassName) {
+      setError(classError || 'No compatible BackupClass found');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const existingStorages = selectedInstance?.spec?.backup?.storages ?? [];
+    const isAlreadyConfigured = existingStorages.some(
+      s => s.storageRef?.name === storageName
+    );
+
+    if (!isAlreadyConfigured && selectedInstance) {
+      const newStorage = {
+        storageRef: { name: storageName },
+      };
+
+      const patchPayload = {
+        spec: {
+          backup: {
+            classRef: selectedInstance.spec?.backup?.classRef ?? { name: backupClassName },
+            enabled: true,
+            storages: [...existingStorages, newStorage],
+          },
+        },
+      };
+
+      try {
+        await selectedInstance.patch(patchPayload);
+      } catch (patchErr: any) {
+        console.warn('Could not auto-register backup storage on instance:', patchErr);
+      }
+    }
 
     const payload = {
       apiVersion: 'backup.openeverest.io/v1alpha1',
@@ -140,7 +192,9 @@ export function CreateOnDemandBackupDialog({
         storageRef: {
           name: storageName,
         },
-        ...(backupClassName ? { classRef: { name: backupClassName } } : {}),
+        classRef: {
+          name: backupClassName,
+        },
       },
     };
 
@@ -180,6 +234,12 @@ export function CreateOnDemandBackupDialog({
             </Alert>
           )}
 
+          {classError && (
+            <Alert severity="warning" sx={{ mb: 2.5 }}>
+              {classError}. Please ensure an OpenEverest BackupClass is installed before taking snapshots.
+            </Alert>
+          )}
+
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <FormControl fullWidth size="small" required>
               <InputLabel id="ondemand-db-label">Database instance</InputLabel>
@@ -197,6 +257,26 @@ export function CreateOnDemandBackupDialog({
                 ))}
               </Select>
             </FormControl>
+
+            {compatibleBackupClasses.length > 1 && (
+              <FormControl fullWidth size="small" required error={Boolean(classError)}>
+                <InputLabel id="ondemand-class-label">Backup class</InputLabel>
+                <Select
+                  labelId="ondemand-class-label"
+                  label="Backup class"
+                  value={backupClassName}
+                  onChange={e => setBackupClassName(e.target.value)}
+                  disabled={isSubmitting}
+                >
+                  {compatibleBackupClasses.map(bc => (
+                    <MenuItem key={bc.metadata.name} value={bc.metadata.name}>
+                      {bc.metadata.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {classError && <FormHelperText>{classError}</FormHelperText>}
+              </FormControl>
+            )}
 
             <TextField
               label="Backup snapshot name"

@@ -33,9 +33,7 @@ export function getCompatibleBackupClasses(
   if (!providerName) return [];
   return classes.filter(bc => {
     if (bc.executionMode !== 'ProviderManaged') return false;
-    const supported = bc.supportedProviders;
-    if (!supported || supported.length === 0) return false;
-    return supported.includes(providerName);
+    return bc.spec?.providerManaged?.providerRef?.name === providerName;
   });
 }
 

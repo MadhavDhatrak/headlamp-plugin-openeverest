@@ -718,6 +718,7 @@ export function BackupsPage() {
         open={isOnDemandOpen}
         onClose={() => setIsOnDemandOpen(false)}
         availableInstances={backupEligibleInstances}
+        availableBackupClasses={backupClasses || []}
         backupStorages={backupStorages}
       />
 

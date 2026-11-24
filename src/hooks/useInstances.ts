@@ -25,18 +25,45 @@ export function useInstances(namespace?: string) {
     let suspended = 0;
 
     for (const inst of instances) {
+      const phase = inst.phase;
+      const lower = (phase || '').toLowerCase();
+
       if (inst.isReady) {
         ready++;
       } else if (
-        inst.phase === 'Provisioning' ||
-        inst.phase === 'Pending' ||
-        inst.phase === 'Initializing'
+        phase === 'Pending' ||
+        phase === 'Provisioned' ||
+        phase === 'Creating' ||
+        phase === 'ApplyingChanges' ||
+        phase === 'Restoring' ||
+        phase === 'Upgrading' ||
+        phase === 'StorageResizing' ||
+        phase === 'Scaling'
       ) {
         creating++;
-      } else if (inst.phase === 'Failed') {
+      } else if (
+        phase === 'CrashLoopBackOff' ||
+        phase === 'ImagePullBackOff' ||
+        phase === 'CreateContainerConfigError' ||
+        phase === 'Unschedulable' ||
+        phase === 'ProviderNotFound' ||
+        phase === 'NotResponding' ||
+        phase === 'ValidationFailed' ||
+        phase === 'ReconcileError' ||
+        phase === 'EngineError' ||
+        phase === 'Stalled' ||
+        phase === 'NeedsAttention' ||
+        phase === 'RetriesExhausted' ||
+        phase === 'ProgressDeadlineExceeded' ||
+        lower.includes('error') ||
+        lower.includes('fail') ||
+        lower.includes('crash')
+      ) {
         failed++;
-      } else if (inst.phase === 'Suspended' || inst.phase === 'Suspending') {
+      } else if (phase === 'Suspended') {
         suspended++;
+      } else {
+        creating++;
       }
     }
 

@@ -10,28 +10,63 @@ export interface BackupClassProviderManaged {
   supportsPITR?: boolean;
   limits?: BackupClassProviderManagedLimits;
   pitrParametersSchema?: Record<string, unknown>;
+  providerRef?: {
+    name?: string;
+  };
 }
 
 export interface BackupClassInstanceConstraints {
   requiredFields?: string[];
 }
 
+export interface BackupClassStorageClassConfig {
+  name: string;
+  authModes: string[];
+  parametersSchema?: Record<string, unknown>;
+  tls?: {
+    customCA?: 'Supported' | 'None';
+    insecureSkipVerify?: 'Supported' | 'None';
+  };
+}
+
 export interface BackupClassSpec {
   displayName?: string;
   description?: string;
-  executionMode: 'ProviderManaged' | 'Job' | string;
-  supportedProviders?: string[];
+  executionMode: 'ProviderManaged';
+  backupStorageClasses: BackupClassStorageClassConfig[];
   providerManaged?: BackupClassProviderManaged;
   instanceConstraints?: BackupClassInstanceConstraints;
-  job?: Record<string, unknown>;
   parametersSchema?: Record<string, unknown>;
   restoreParametersSchema?: Record<string, unknown>;
+  supportsImport?: boolean;
   uiSchema?: Record<string, unknown>;
+}
+
+export interface BackupClassStatusProvider {
+  name: string;
+  compatibility: 'Compatible' | 'Pending' | 'Incompatible';
+  classGeneration?: number;
+  message?: string;
+  reason?: string;
+}
+
+export interface BackupClassStatusCondition {
+  type: string;
+  status: 'True' | 'False' | 'Unknown';
+  lastTransitionTime: string;
+  reason: string;
+  message: string;
+  observedGeneration?: number;
+}
+
+export interface BackupClassStatus {
+  conditions?: BackupClassStatusCondition[];
+  providers?: BackupClassStatusProvider[];
 }
 
 export interface BackupClassInterface extends KubeObjectInterface {
   spec: BackupClassSpec;
-  status?: Record<string, unknown>;
+  status?: BackupClassStatus;
 }
 
 export class BackupClass extends KubeObject<BackupClassInterface> {
@@ -53,7 +88,8 @@ export class BackupClass extends KubeObject<BackupClassInterface> {
   }
 
   get supportedProviders(): string[] {
-    return this.spec?.supportedProviders || [];
+    const fromRef = this.spec?.providerManaged?.providerRef?.name;
+    return fromRef ? [fromRef] : [];
   }
 
   get supportsPITR(): boolean {
