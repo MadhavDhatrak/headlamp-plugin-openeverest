@@ -13,27 +13,48 @@ export function DatabaseStatusChip({ phase = 'Pending' }: DatabaseStatusChipProp
 
   switch (phase) {
     case 'Ready':
+    case 'Available':
       color = 'success';
       icon = <Icon icon="mdi:check-circle" width={16} height={16} />;
       break;
 
-    case 'Provisioning':
-    case 'Initializing':
+    case 'Creating':
     case 'Pending':
-    case 'Updating':
+    case 'Provisioned':
+    case 'ApplyingChanges':
     case 'Restoring':
-    case 'Resuming':
+    case 'Upgrading':
+    case 'StorageResizing':
+    case 'Scaling':
       color = 'warning';
       icon = <CircularProgress size={12} color="inherit" thickness={5} />;
       break;
 
-    case 'Failed':
+    case 'CrashLoopBackOff':
+    case 'ImagePullBackOff':
+    case 'CreateContainerConfigError':
+    case 'Unschedulable':
+    case 'ProviderNotFound':
+    case 'NotResponding':
+    case 'ValidationFailed':
+    case 'ReconcileError':
+    case 'EngineError':
+    case 'AwaitingApproval':
+    case 'UserSecretNotFound':
+    case 'InvalidReference':
+    case 'BackupStorageNotFound':
+    case 'BackupClassNotFound':
+    case 'BackupStorageCredentialsNotFound':
+    case 'NotReady':
+    case 'RetriesExhausted':
+    case 'ProgressDeadlineExceeded':
+    case 'Stalled':
+    case 'NeedsAttention':
       color = 'error';
       icon = <Icon icon="mdi:alert-circle" width={16} height={16} />;
       break;
 
     case 'Suspended':
-    case 'Suspending':
       color = 'default';
       icon = <Icon icon="mdi:pause-circle" width={16} height={16} />;
       break;
@@ -43,10 +64,17 @@ export function DatabaseStatusChip({ phase = 'Pending' }: DatabaseStatusChipProp
       icon = <CircularProgress size={12} color="inherit" thickness={5} />;
       break;
 
-    default:
-      color = 'default';
-      icon = <Icon icon="mdi:help-circle" width={16} height={16} />;
+    default: {
+      const lower = String(phase).toLowerCase();
+      if (lower.includes('error') || lower.includes('fail') || lower.includes('crash')) {
+        color = 'error';
+        icon = <Icon icon="mdi:alert-circle" width={16} height={16} />;
+      } else {
+        color = 'warning';
+        icon = <CircularProgress size={12} color="inherit" thickness={5} />;
+      }
       break;
+    }
   }
 
   return (

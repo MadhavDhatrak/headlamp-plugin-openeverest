@@ -141,16 +141,36 @@ export interface InstanceSpec {
 
 export type InstancePhase =
   | 'Pending'
-  | 'Provisioning'
-  | 'Initializing'
-  | 'Ready'
-  | 'Updating'
+  | 'Provisioned'
   | 'Terminating'
-  | 'Failed'
+  | 'Ready'
+  | 'Creating'
+  | 'ApplyingChanges'
+  | 'Deleting'
   | 'Restoring'
-  | 'Suspending'
+  | 'Upgrading'
+  | 'StorageResizing'
+  | 'Scaling'
   | 'Suspended'
-  | 'Resuming';
+  | 'CrashLoopBackOff'
+  | 'ImagePullBackOff'
+  | 'CreateContainerConfigError'
+  | 'Unschedulable'
+  | 'ProviderNotFound'
+  | 'NotResponding'
+  | 'ValidationFailed'
+  | 'ReconcileError'
+  | 'EngineError'
+  | 'AwaitingApproval'
+  | 'UserSecretNotFound'
+  | 'InvalidReference'
+  | 'BackupStorageNotFound'
+  | 'BackupClassNotFound'
+  | 'BackupStorageCredentialsNotFound'
+  | 'NotReady'
+  | 'RetriesExhausted'
+  | 'ProgressDeadlineExceeded'
+  | string;
 
 export interface InstanceStatusCondition {
   type: string;
@@ -227,17 +247,33 @@ export class Instance extends KubeObject<InstanceInterface> {
     if (this.isDeleting) {
       return 'Terminating';
     }
+    const readyCond = this.status?.conditions?.find(c => c.type === 'Ready');
+    if (this.status?.phase === 'Provisioned') {
+      if (readyCond?.status === 'True') {
+        return 'Ready';
+      }
+      if (readyCond?.reason) {
+        return readyCond.reason as InstancePhase;
+      }
+      return 'Ready';
+    }
+    if (readyCond?.reason && readyCond.reason !== 'Ready') {
+      return readyCond.reason as InstancePhase;
+    }
     return this.status?.phase ?? 'Pending';
   }
 
   get isReady(): boolean {
-    if (this.phase === 'Ready') return true;
+    if (this.isDeleting) return false;
     const readyCondition = this.status?.conditions?.find(c => c.type === 'Ready');
     return readyCondition?.status === 'True';
   }
 
   get message(): string | undefined {
-    return this.status?.message;
+    return (
+      this.status?.message ||
+      this.status?.conditions?.find(c => c.type === 'Ready')?.message
+    );
   }
 
   get providerName(): string {

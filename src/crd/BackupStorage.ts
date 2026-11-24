@@ -1,23 +1,33 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 
-export interface BackupStorageS3Config {
-  bucket: string;
-  region: string;
-  endpointURL: string;
-  credentialsSecretRef: {
-    name: string;
+export interface BackupStorageLocation {
+  objectStore?: {
+    bucket?: string;
+    prefix?: string;
   };
-  forcePathStyle?: boolean;
-  verifyTLS?: boolean;
-  accessKeyId?: string;
-  secretAccessKey?: string;
 }
 
-export type BackupStorageType = 's3' | string;
+export interface BackupStorageParameters {
+  region?: string;
+  endpointURL?: string;
+  forcePathStyle?: boolean;
+  implementation?: string;
+  [key: string]: unknown;
+}
+
+export interface BackupStorageAuthentication {
+  mode?: string;
+  credentialsSecretRef?: {
+    name?: string;
+  };
+}
 
 export interface BackupStorageSpec {
-  type: BackupStorageType;
-  s3?: BackupStorageS3Config;
+  backupStorageClassRef?: { name?: string };
+  location?: BackupStorageLocation;
+  parameters?: BackupStorageParameters;
+  authentication?: BackupStorageAuthentication;
+  tls?: Record<string, unknown>;
 }
 
 export type BackupStorageStatus = Record<string, unknown>;
@@ -42,22 +52,23 @@ export class BackupStorage extends KubeObject<BackupStorageInterface> {
   }
 
   get storageType(): string {
-    return this.spec?.type || 's3';
+    return this.spec?.backupStorageClassRef?.name || 's3';
   }
 
   get bucket(): string {
-    return this.spec?.s3?.bucket || '-';
+    return this.spec?.location?.objectStore?.bucket || '-';
   }
 
   get region(): string {
-    return this.spec?.s3?.region || '-';
+    return this.spec?.parameters?.region || '-';
   }
 
   get endpointURL(): string {
-    return this.spec?.s3?.endpointURL || '-';
+    return this.spec?.parameters?.endpointURL || '-';
   }
 
   get secretName(): string {
-    return this.spec?.s3?.credentialsSecretRef?.name || '-';
+    return this.spec?.authentication?.credentialsSecretRef?.name || '-';
   }
 }
+
