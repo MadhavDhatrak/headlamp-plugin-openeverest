@@ -165,6 +165,8 @@ export function buildInstancePayload(params: BuildInstanceParams): KubeInstanceP
       if (!strVal.endsWith(badge)) {
         valueToStore = `${strVal}${badge}`;
       } 
+    } else if (key.endsWith('.cpu') || (typeof valueToStore === 'number' && !Number.isInteger(valueToStore))) {
+      valueToStore = String(valueToStore);
     }
 
     const pathWithoutSpecPrefix = key.substring('spec.'.length);
