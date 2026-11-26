@@ -77,7 +77,7 @@ Install OpenEverest V2 with Helm:
 helm repo add openeverest https://openeverest.github.io/helm-charts/
 helm repo update
 helm install everest-core openeverest/openeverest \
-  --devel --version "2.0.0-dev.4" \
+  --devel --version "2.0.0-alpha.1" \
   --namespace everest-system --create-namespace
 ```
 
